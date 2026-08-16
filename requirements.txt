@@ -1,0 +1,5 @@
+flask==3.0.3
+gunicorn==23.0.0
+# Nur noetig, wenn DATABASE_URL gesetzt ist (Postgres statt SQLite).
+# Der Import passiert erst dann, lokal stoert das Paket also nicht.
+psycopg[binary]==3.2.3
