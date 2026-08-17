@@ -2,4 +2,10 @@ flask==3.0.3
 gunicorn==23.0.0
 # Nur noetig, wenn DATABASE_URL gesetzt ist (Postgres statt SQLite).
 # Der Import passiert erst dann, lokal stoert das Paket also nicht.
-psycopg[binary]==3.2.3
+#
+# Bewusst keine feste Nummer: die fertigen Binaerpakete werden nicht fuer jede
+# Version und jede Python-Fassung gebaut. Ein Pin auf eine, die es dort nicht
+# gibt, laesst den Build scheitern, bevor auch nur eine Zeile Code laeuft -
+# genau das ist am 17.08.2026 passiert. Die Obergrenze schuetzt vor einem
+# Bruch bei Version 4.
+psycopg[binary]>=3.2.10,<4
