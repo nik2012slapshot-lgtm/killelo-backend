@@ -19,6 +19,7 @@ header  X-Api-Key: <same value>.
 """
 import math
 import os
+import re
 import sqlite3
 import time
 from contextlib import closing
@@ -36,6 +37,11 @@ DEDUP_WINDOW_S = 10.0
 # Backend beides.
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 USE_PG = DATABASE_URL.startswith(("postgres://", "postgresql://"))
+# Wie lange auf die Datenbank gewartet wird, bevor aufgegeben wird.
+DB_CONNECT_TIMEOUT_S = 10
+# Nach einem Fehlschlag so lange nicht erneut versuchen, das Schema anzulegen -
+# sonst laeuft jede einzelne Anfrage in denselben Zeitfehler.
+SCHEMA_RETRY_S = 30.0
 
 # ---- ELO rules (mirrors the mod) -----------------------------------------
 K = 50.0
@@ -64,7 +70,12 @@ def connect():
                 "DATABASE_URL ist gesetzt, aber psycopg fehlt - "
                 "'pip install psycopg[binary]' ausfuehren."
             )
-        return psycopg.connect(DATABASE_URL, row_factory=dict_row)
+        # connect_timeout ist Pflicht, keine Feinheit: ohne ihn wartet psycopg
+        # unbegrenzt. Ist die Datenbank nicht erreichbar, haengt damit der
+        # einzige Arbeitsprozess fest und der ganze Dienst antwortet auf nichts
+        # mehr - nach aussen sieht das aus wie ein Server, der stumm bleibt.
+        return psycopg.connect(DATABASE_URL, row_factory=dict_row,
+                               connect_timeout=DB_CONNECT_TIMEOUT_S)
     d = sqlite3.connect(DB_PATH)
     d.row_factory = sqlite3.Row
     return d
@@ -141,26 +152,33 @@ def init_db():
 
 
 _schema_ready = False
+_schema_next_try = 0.0
 
 
 def ensure_schema():
     """Legt das Schema an, sobald die Datenbank erreichbar ist.
 
-    Beim Start darf das noch scheitern: kostenlose Postgres-Anbieter fahren die
+    Beim Start darf das scheitern: kostenlose Postgres-Anbieter fahren die
     Datenbank bei Leerlauf herunter, die erste Verbindung laeuft dann in einen
-    Zeitfehler. Frueher waere damit der ganze Dienst gestorben - jetzt wird es
-    beim naechsten Aufruf einfach noch einmal versucht.
+    Zeitfehler. Der Dienst stirbt daran nicht, sondern versucht es spaeter noch
+    einmal - aber mit Abstand, sonst wartet jede Anfrage aufs Neue.
     """
-    if _schema_ready:
+    global _schema_next_try
+    if _schema_ready or time.time() < _schema_next_try:
         return
     try:
         init_db()
     except Exception as exc:  # noqa: BLE001 - Grund wird geloggt, Dienst laeuft weiter
+        _schema_next_try = time.time() + SCHEMA_RETRY_S
         app.logger.warning("Schema noch nicht bereit: %s", exc)
 
 
 @app.before_request
 def _before(*_args):
+    # /health muss ohne Datenbank antworten. Genau dann will man es lesen:
+    # wenn etwas klemmt und die Frage lautet, ob ueberhaupt jemand zu Hause ist.
+    if request.path == "/health":
+        return
     ensure_schema()
 
 
@@ -417,7 +435,45 @@ def health():
     return "ok"
 
 
-ensure_schema()
+def redact(text):
+    """Entfernt Zugangsdaten aus einer Fehlermeldung.
+
+    Postgres-Treiber schreiben die Verbindungsangaben gern in den Fehlertext,
+    und dieser Endpunkt ist oeffentlich - das Passwort darf da nicht landen.
+    """
+    text = re.sub(r"://[^@\s]+@", "://***@", text)
+    text = re.sub(r"password=\S+", "password=***", text)
+    return text[:300]
+
+
+@app.get("/health/db")
+def health_db():
+    """Sagt, ob die Datenbank erreichbar ist - und warum nicht.
+
+    Absichtlich getrennt von /health: jenes muss auch dann antworten, wenn die
+    Datenbank weg ist. Dieses hier ist zum Nachsehen, wenn etwas klemmt.
+    """
+    info = {
+        "storage": "postgres" if USE_PG else "sqlite",
+        "database_url_set": bool(DATABASE_URL),
+        "schema_ready": _schema_ready,
+    }
+    started = time.time()
+    try:
+        ex(db(), "SELECT 1").fetchone()
+        info["ok"] = True
+    except Exception as exc:  # noqa: BLE001 - der Grund ist hier der Zweck
+        info["ok"] = False
+        info["error_type"] = type(exc).__name__
+        info["error"] = redact(str(exc))
+    info["took_ms"] = int((time.time() - started) * 1000)
+    return jsonify(info), 200 if info.get("ok") else 503
+
+
+# Beim Import wird bewusst *nicht* verbunden. Sonst haengt der Arbeitsprozess
+# schon beim Start an einer Datenbank, die vielleicht gerade hochfaehrt - der
+# Port ist dann offen, aber niemand antwortet. Das Schema entsteht bei der
+# ersten Anfrage (siehe _before).
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
