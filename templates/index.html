@@ -3,216 +3,469 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kill-ELO — Global PvP Leaderboard</title>
-<meta name="description" content="Live global leaderboard for the Kill-ELO Minecraft mod. Chess-style Elo rating for PvP, built from the kill messages in chat.">
-<meta property="og:title" content="Kill-ELO — Global PvP Leaderboard">
-<meta property="og:description" content="Live global leaderboard for the Kill-ELO Minecraft mod.">
-<meta property="og:type" content="website">
+<title>ELO System — PvP Leaderboard</title>
+<meta name="description" content="Global leaderboard for the ELO System Minecraft mod. Chess-style Elo rating for PvP, built from the kill messages in chat.">
+<meta property="og:title" content="ELO System — PvP Leaderboard">
+<meta property="og:description" content="Global leaderboard for the ELO System Minecraft mod.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>&#9876;</text></svg>">
 <style>
+  /* ---------------------------------------------------------------
+     Minecraft-Anmutung ohne fremde Schriften oder Bilder: der Look
+     entsteht aus hartem Textschatten, eckigen Kanten und den typischen
+     3D-Raendern der Spiel-Oberflaeche (hell oben/links, dunkel unten/
+     rechts). Damit bleibt die Seite ohne externe Abhaengigkeit.
+     --------------------------------------------------------------- */
   :root {
-    --bg: #0d1117;
-    --panel: #151b24;
-    --panel-2: #1b2330;
-    --line: #263040;
-    --text: #e6edf3;
-    --muted: #8b98a9;
-    --accent: #ff4d5e;
+    --bg: #14181f;
+    --bg2: #1b212b;
+    --panel: #2b323d;
+    --panel-hi: #3d4655;
+    --panel-lo: #171c24;
+    --stone: #8b8b8b;
+    --text: #e8eef5;
+    --muted: #97a3b4;
+    --grass: #6cc04a;
+    --grass-dark: #3f7a2c;
+    --gold: #ffc93c;
+    --red: #ff4d5e;
   }
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
+    font: 15px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
   }
-  a { color: inherit; }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+
+  /* Pixelraster im Hintergrund - zwei feine Linienmuster uebereinander. */
+  body::before {
+    content: "";
+    position: fixed; inset: 0; z-index: -2;
+    background:
+      linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px) 0 0 / 32px 32px,
+      linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px) 0 0 / 32px 32px,
+      radial-gradient(ellipse at 50% -10%, #223047 0%, var(--bg) 60%);
+  }
+
+  /* Langsam steigende Bloecke - dezent, nicht ablenkend. */
+  .blocks { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .blocks i {
+    position: absolute; bottom: -60px;
+    width: 22px; height: 22px;
+    background: var(--grass-dark);
+    opacity: .13;
+    animation: rise linear infinite;
+  }
+  @keyframes rise {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+    12%  { opacity: .16; }
+    88%  { opacity: .16; }
+    100% { transform: translateY(-105vh) rotate(180deg); opacity: 0; }
+  }
+
+  .pixel {
+    font-family: "Courier New", Consolas, monospace;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-shadow: 3px 3px 0 rgba(0,0,0,.55);
+  }
+
+  .wrap { max-width: 900px; margin: 0 auto; padding: 30px 14px 70px; }
 
   /* ---- Kopf ---- */
-  header { text-align: center; margin-bottom: 28px; }
+  header { text-align: center; margin-bottom: 22px; }
   h1 {
-    margin: 0 0 6px;
-    font-size: clamp(28px, 6vw, 42px);
-    letter-spacing: -0.02em;
+    margin: 0;
+    font-size: clamp(30px, 7vw, 52px);
+    line-height: 1.1;
+    color: var(--grass);
+    animation: pop .5s cubic-bezier(.2,1.4,.4,1) both;
   }
-  h1 .dot { color: var(--accent); }
-  .tagline { margin: 0; color: var(--muted); font-size: 15px; }
+  h1 span { color: var(--gold); display: inline-block; animation: sway 3.5s ease-in-out infinite; }
+  @keyframes pop { from { transform: scale(.82); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes sway { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+  .tagline { margin: 8px 0 0; color: var(--muted); font-size: 14px; animation: fade .6s .15s both; }
 
-  .cta { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
-  .btn {
-    display: inline-block; padding: 9px 18px; border-radius: 8px;
-    background: var(--accent); color: #fff; text-decoration: none;
-    font-weight: 600; font-size: 14px; border: 1px solid transparent;
-    transition: filter .15s;
+  /* ---- Minecraft-Knoepfe ---- */
+  .btn, .tab {
+    display: inline-block; cursor: pointer;
+    font-family: "Courier New", Consolas, monospace;
+    font-weight: 700; letter-spacing: .04em;
+    color: var(--text); text-decoration: none;
+    background: var(--panel);
+    border: 0;
+    border-top: 3px solid var(--panel-hi);
+    border-left: 3px solid var(--panel-hi);
+    border-right: 3px solid var(--panel-lo);
+    border-bottom: 3px solid var(--panel-lo);
+    padding: 10px 18px;
+    text-shadow: 2px 2px 0 rgba(0,0,0,.5);
+    transition: background .12s, transform .12s;
   }
-  .btn:hover { filter: brightness(1.12); }
-  .btn.ghost { background: transparent; border-color: var(--line); color: var(--text); }
+  .btn:hover, .tab:hover { background: var(--panel-hi); transform: translateY(-2px); }
+  .btn:active, .tab:active {
+    transform: translateY(1px);
+    border-top-color: var(--panel-lo); border-left-color: var(--panel-lo);
+    border-right-color: var(--panel-hi); border-bottom-color: var(--panel-hi);
+  }
+  .btn.green { background: var(--grass-dark); border-top-color: #7ed85c; border-left-color: #7ed85c; }
+  .btn.green:hover { background: #4e9636; }
+
+  .cta { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px;
+         animation: fade .6s .25s both; }
+
+  /* ---- Reiter ---- */
+  nav { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 26px 0 0;
+        animation: fade .6s .3s both; }
+  .tab { font-size: 13px; padding: 10px 14px; opacity: .72; }
+  .tab[aria-selected="true"] {
+    opacity: 1; background: var(--grass-dark);
+    border-top-color: #7ed85c; border-left-color: #7ed85c;
+    color: #fff;
+  }
+
+  .panel {
+    background: rgba(27,33,43,.86);
+    border-top: 3px solid var(--panel-hi);
+    border-left: 3px solid var(--panel-hi);
+    border-right: 3px solid var(--panel-lo);
+    border-bottom: 3px solid var(--panel-lo);
+    margin-top: 14px;
+    padding: 18px;
+  }
+  .view[hidden] { display: none; }
+  .view { animation: slidein .32s ease both; }
+  @keyframes slidein { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+
+  h2.pixel { font-size: 17px; margin: 0 0 14px; color: var(--gold); }
+  h2.pixel::before { content: "▎"; color: var(--grass); }
 
   /* ---- Kennzahlen ---- */
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 26px 0; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
   .stat {
-    background: var(--panel); border: 1px solid var(--line);
-    border-radius: 10px; padding: 14px 12px; text-align: center;
+    background: var(--panel-lo); padding: 14px 8px; text-align: center;
+    border-top: 2px solid var(--panel); border-left: 2px solid var(--panel);
+    transition: transform .15s;
   }
-  .stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
-  .stat span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .stat:hover { transform: translateY(-3px); }
+  .stat b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; color: var(--gold);
+            font-family: "Courier New", monospace; text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
+  .stat span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
 
   /* ---- Suche ---- */
-  .search { position: relative; margin-bottom: 14px; }
-  .search input {
-    width: 100%; padding: 11px 14px; border-radius: 9px;
-    background: var(--panel); border: 1px solid var(--line);
-    color: var(--text); font-size: 15px; outline: none;
+  #q {
+    width: 100%; padding: 11px 13px; margin-bottom: 12px;
+    background: var(--panel-lo); color: var(--text);
+    border: 0; border-top: 3px solid var(--panel-lo); border-left: 3px solid var(--panel-lo);
+    border-right: 3px solid var(--panel); border-bottom: 3px solid var(--panel);
+    font: 14px "Courier New", monospace; outline: none;
   }
-  .search input:focus { border-color: var(--accent); }
-  .search input::placeholder { color: var(--muted); }
+  #q:focus { border-top-color: var(--grass-dark); border-left-color: var(--grass-dark); }
+  #q::placeholder { color: #66717f; }
 
-  /* ---- Tabelle ---- */
-  .board { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  /* ---- Rangliste ---- */
   .row {
-    display: grid;
-    grid-template-columns: 46px 1fr 92px 74px 60px;
-    align-items: center; gap: 10px;
-    padding: 10px 14px;
-    border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 48px 1fr 96px 76px 62px;
+    align-items: center; gap: 10px; padding: 9px 10px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    animation: rowin .3s ease both;
   }
-  .row:first-child { border-top: 0; }
-  .row.head {
-    background: var(--panel-2); color: var(--muted);
-    font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
-  }
-  .row:not(.head):hover { background: var(--panel-2); }
-  .pos { color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; }
-  .pos.top { color: #ffc93c; font-weight: 700; }
+  @keyframes rowin { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+  .row.head { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
+              background: var(--panel-lo); animation: none; }
+  .row:not(.head):hover { background: rgba(108,192,74,.09); }
+  .pos { text-align: center; font-family: "Courier New", monospace; font-weight: 700; color: var(--muted); }
+  .pos.m1 { color: #ffd700; } .pos.m2 { color: #cfd6dd; } .pos.m3 { color: #cd7f32; }
   .who { display: flex; align-items: center; gap: 9px; min-width: 0; }
-  .who img { width: 26px; height: 26px; border-radius: 4px; image-rendering: pixelated; background: var(--panel-2); flex: none; }
-  .who .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-  .rank { font-size: 13px; font-weight: 600; }
-  .elo { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
-  .kd { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; text-align: right; }
-  .provisional { opacity: .55; }
-  .provisional .elo::after { content: " ~"; color: var(--muted); }
+  .who img { width: 28px; height: 28px; image-rendering: pixelated; flex: none; background: var(--panel-lo); }
+  .who .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank { font-size: 12px; font-family: "Courier New", monospace; font-weight: 700; }
+  .elo { text-align: right; font-family: "Courier New", monospace; font-weight: 700;
+         font-variant-numeric: tabular-nums; }
+  .kd { text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .provisional { opacity: .5; }
+  .provisional .elo::after { content: " ~"; }
 
-  .msg { padding: 40px 20px; text-align: center; color: var(--muted); }
-  .more { display: block; width: 100%; padding: 12px; background: var(--panel-2);
-          border: 0; border-top: 1px solid var(--line); color: var(--text);
-          font: inherit; font-weight: 600; cursor: pointer; }
-  .more:hover { background: #222c3b; }
-  .more[hidden] { display: none; }
+  .msg { padding: 34px 16px; text-align: center; color: var(--muted); }
+  #more { display: block; width: 100%; margin-top: 12px; }
+  #more[hidden] { display: none; }
 
-  footer { margin-top: 30px; text-align: center; color: var(--muted); font-size: 13px; }
-  footer a { color: var(--muted); }
+  /* ---- Raenge ---- */
+  .ranks { display: grid; gap: 8px; }
+  .rankrow {
+    display: grid; grid-template-columns: 16px 1fr auto; gap: 12px; align-items: center;
+    background: var(--panel-lo); padding: 11px 13px;
+    border-left: 4px solid currentColor;
+    transition: transform .15s, background .15s;
+    animation: rowin .3s ease both;
+  }
+  .rankrow:hover { transform: translateX(6px); background: var(--panel); }
+  .rankrow .dot { width: 13px; height: 13px; background: currentColor; }
+  .rankrow .nm { font-family: "Courier New", monospace; font-weight: 700; letter-spacing: .05em;
+                 text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
+  .rankrow .th { color: var(--muted); font-size: 12px; font-family: "Courier New", monospace; }
 
-  @media (max-width: 560px) {
-    .row { grid-template-columns: 34px 1fr 68px 56px; gap: 8px; padding: 10px; }
-    .kd, .row.head .kd { display: none; }
-    .rank { font-size: 12px; }
+  /* ---- Mods ---- */
+  .mods { display: grid; gap: 10px; }
+  .mod {
+    background: var(--panel-lo); padding: 14px;
+    border-top: 2px solid var(--panel); border-left: 2px solid var(--panel);
+    transition: transform .15s;
+    animation: rowin .3s ease both;
+  }
+  .mod:hover { transform: translateY(-3px); }
+  .mod h3 { margin: 0 0 5px; font-size: 15px; font-family: "Courier New", monospace;
+            text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
+  .mod p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+  .badge {
+    display: inline-block; font-size: 10px; padding: 3px 8px; margin-left: 8px;
+    font-family: "Courier New", monospace; letter-spacing: .08em; vertical-align: middle;
+  }
+  .badge.live { background: var(--grass-dark); color: #dfffd0; }
+  .badge.soon { background: #4a4033; color: var(--gold); }
+
+  footer { margin-top: 26px; text-align: center; color: var(--muted); font-size: 12px; }
+  footer a { color: var(--grass); }
+
+  @media (max-width: 580px) {
+    .row { grid-template-columns: 34px 1fr 70px 58px; gap: 7px; }
+    .kd { display: none; }
+    .stats { gap: 6px; }
+    .stat b { font-size: 19px; }
+  }
+
+  /* Wer Bewegung abgestellt hat, bekommt keine. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .blocks { display: none; }
   }
 </style>
 </head>
 <body>
+<div class="blocks" id="blocks" aria-hidden="true"></div>
+
 <div class="wrap">
 
   <header>
-    <h1>Kill<span class="dot">-</span>ELO</h1>
-    <p class="tagline">Global PvP ranking, built from the kill messages in chat.</p>
+    <h1 class="pixel">ELO <span>SYSTEM</span></h1>
+    <p class="tagline">Competitive PvP ranking for any Minecraft server — built from the kill messages in chat.</p>
     <div class="cta">
-      <a class="btn" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">Download on Modrinth</a>
-      <a class="btn ghost" href="https://www.curseforge.com/minecraft/mc-mods/elo-system" target="_blank" rel="noopener">CurseForge</a>
+      <a class="btn green" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">▼ Modrinth</a>
+      <a class="btn" href="https://www.curseforge.com/minecraft/mc-mods/elo-system" target="_blank" rel="noopener">▼ CurseForge</a>
     </div>
   </header>
 
-  <div class="stats">
-    <div class="stat"><b id="s-players">–</b><span>Players</span></div>
-    <div class="stat"><b id="s-kills">–</b><span>Kills tracked</span></div>
-    <div class="stat"><b id="s-top">–</b><span>Top Elo</span></div>
-  </div>
+  <nav role="tablist" aria-label="Sections">
+    <button class="tab pixel" role="tab" aria-selected="true"  data-view="board">TOP ELO</button>
+    <button class="tab pixel" role="tab" aria-selected="false" data-view="ranks">RANKS</button>
+    <button class="tab pixel" role="tab" aria-selected="false" data-view="mods">OTHER MODS</button>
+    <button class="tab pixel" role="tab" aria-selected="false" data-view="donate">DONATE</button>
+  </nav>
 
-  <div class="search">
-    <input id="q" type="search" placeholder="Search for a player…" autocomplete="off" spellcheck="false">
-  </div>
+  <!-- ---------- TOP ELO ---------- -->
+  <section class="panel view" id="view-board" role="tabpanel">
+    <div class="stats">
+      <div class="stat"><b id="s-players">0</b><span>Players</span></div>
+      <div class="stat"><b id="s-kills">0</b><span>Kills</span></div>
+      <div class="stat"><b id="s-top">0</b><span>Top Elo</span></div>
+    </div>
 
-  <div class="board">
+    <input id="q" type="search" placeholder="&gt; search player..." autocomplete="off" spellcheck="false">
+
     <div class="row head">
-      <div class="pos">#</div>
-      <div>Player</div>
-      <div class="rank">Rank</div>
-      <div class="elo">Elo</div>
-      <div class="kd">K / D</div>
+      <div class="pos">#</div><div>Player</div>
+      <div class="rank">Rank</div><div class="elo">Elo</div><div class="kd">K/D</div>
     </div>
     <div id="rows"></div>
     <div id="msg" class="msg">Loading…</div>
-    <button id="more" class="more" hidden>Load more</button>
-  </div>
+    <button id="more" class="btn pixel" hidden>LOAD MORE</button>
+  </section>
+
+  <!-- ---------- RANKS ---------- -->
+  <section class="panel view" id="view-ranks" role="tabpanel" hidden>
+    <h2 class="pixel">THE EIGHT RANKS</h2>
+    <div class="ranks" id="ranklist"></div>
+    <p style="color:var(--muted);font-size:13px;margin:16px 0 0">
+      Everyone starts at <b style="color:var(--text)">1000</b>. Beating a stronger opponent is worth
+      more than beating a weaker one, and killing the same player over and over is worth less each
+      time. Ratings stay provisional (<span style="opacity:.6">~</span>) until three recorded fights.
+    </p>
+  </section>
+
+  <!-- ---------- OTHER MODS ---------- -->
+  <section class="panel view" id="view-mods" role="tabpanel" hidden>
+    <h2 class="pixel">MORE FROM THEREALNOOB</h2>
+    <div class="mods">
+      <div class="mod">
+        <h3>ELO System <span class="badge live">RELEASED</span></h3>
+        <p>Kill-based Elo for any PvP server. Ranks, killstreaks, anti-farming, tab-list tags —
+           entirely client-side.</p>
+        <a class="btn green pixel" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">DOWNLOAD</a>
+      </div>
+      <div class="mod">
+        <h3>Orphaned <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <p>Removed a mod from your world? Minecraft silently deletes every block it owned. Orphaned
+           finds those leftovers and cleans them up.</p>
+      </div>
+      <div class="mod">
+        <h3>Map Marker <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <p>Mark out a region with two key presses, give it a name and a colour, and group regions by
+           that colour.</p>
+      </div>
+      <div class="mod">
+        <h3>ChunkView <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <p>Render distance far beyond the vanilla limit, set with a command: <code>/rd &lt;chunks&gt;</code>.</p>
+      </div>
+      <div class="mod">
+        <h3>AI Builder <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <p>Describe a building in plain text and watch it get placed block by block.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- DONATE ---------- -->
+  <section class="panel view" id="view-donate" role="tabpanel" hidden>
+    <h2 class="pixel">SUPPORT THE PROJECT</h2>
+    <p style="color:var(--muted);font-size:14px">
+      Every mod here is free, has no ads and collects nothing you did not agree to. Running the
+      leaderboard costs nothing today — it sits on free hosting — and the plan is to keep it that way.
+    </p>
+    <p style="color:var(--muted);font-size:14px">
+      If you want to help anyway, the things that actually move the needle are free:
+    </p>
+    <div class="mods" style="margin-top:14px">
+      <div class="mod">
+        <h3>★ Leave a rating</h3>
+        <p>A follow or a comment on Modrinth does more for a small mod than anything else — it decides
+           whether anyone ever finds it.</p>
+        <a class="btn green pixel" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">OPEN MODRINTH</a>
+      </div>
+      <div class="mod">
+        <h3>⚑ Tell your server</h3>
+        <p>Ask whether client-side mods are allowed, then mention it in chat. That is how most players
+           here found it.</p>
+      </div>
+      <div class="mod">
+        <h3>⚒ Report bugs and ideas</h3>
+        <p>Half the features in 1.3.0 came from players who simply said what was missing.</p>
+      </div>
+    </div>
+  </section>
 
   <footer>
-    <p>Ranks are provisional (<span style="opacity:.6">~</span>) until a player has 3 recorded fights.<br>
-    Made by <a href="https://modrinth.com/user/nik2012slapshot" target="_blank" rel="noopener">nik2012slapshot</a>.</p>
+    <p>Made by <a href="https://modrinth.com/user/TheRealNoob" target="_blank" rel="noopener">TheRealNoob</a>
+       · Ratings are local by default; the leaderboard only shows players who opted in with
+       <code>/elo online on</code>.</p>
   </footer>
-
 </div>
 
 <script>
 // Gleiche Schwellen und Farben wie Rank.java in der Mod.
 const RANKS = [
-  { min: 2000, name: "Legend",   color: "#FF4D5E" },
-  { min: 1750, name: "Champion", color: "#9B4DFF" },
-  { min: 1550, name: "Master",   color: "#C77DFF" },
-  { min: 1400, name: "Diamond",  color: "#4FA6FF" },
-  { min: 1250, name: "Platinum", color: "#5AE6E0" },
-  { min: 1100, name: "Gold",     color: "#FFC93C" },
-  { min:  850, name: "Silver",   color: "#C0C7D0" },
-  { min:    0, name: "Bronze",   color: "#A9714B" },
+  { min: 2000, name: "LEGEND",   color: "#FF4D5E" },
+  { min: 1750, name: "CHAMPION", color: "#9B4DFF" },
+  { min: 1550, name: "MASTER",   color: "#C77DFF" },
+  { min: 1400, name: "DIAMOND",  color: "#4FA6FF" },
+  { min: 1250, name: "PLATINUM", color: "#5AE6E0" },
+  { min: 1100, name: "GOLD",     color: "#FFC93C" },
+  { min:  850, name: "SILVER",   color: "#C0C7D0" },
+  { min:    0, name: "BRONZE",   color: "#A9714B" },
 ];
 const rankOf = elo => RANKS.find(r => elo >= r.min) || RANKS[RANKS.length - 1];
-
-const PAGE = 25;
-const rowsEl = document.getElementById("rows");
-const msgEl  = document.getElementById("msg");
-const moreEl = document.getElementById("more");
-const qEl    = document.getElementById("q");
-
-let offset = 0, total = 0, query = "", busy = false;
-
 const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-// mc-heads liefert den Kopf sowohl per UUID als auch per Name; ohne beides
-// bleibt das Standardbild (Steve).
+// ---- Reiter ----
+const tabs = [...document.querySelectorAll(".tab")];
+tabs.forEach(t => t.addEventListener("click", () => {
+  tabs.forEach(o => o.setAttribute("aria-selected", String(o === t)));
+  for (const v of document.querySelectorAll(".view")) v.hidden = true;
+  const view = document.getElementById("view-" + t.dataset.view);
+  view.hidden = false;
+  // Neu anstossen, damit die Einblendung bei jedem Wechsel laeuft.
+  view.style.animation = "none";
+  void view.offsetWidth;
+  view.style.animation = "";
+}));
+
+// ---- Rangtabelle aufbauen ----
+const rl = document.getElementById("ranklist");
+RANKS.slice().reverse().forEach((r, i) => {
+  const next = RANKS.slice().reverse()[i + 1];
+  const el = document.createElement("div");
+  el.className = "rankrow";
+  el.style.color = r.color;
+  el.style.animationDelay = (i * 45) + "ms";
+  el.innerHTML = '<div class="dot"></div>' +
+    '<div class="nm">' + r.name + '</div>' +
+    '<div class="th">' + r.min + (next ? " – " + (next.min - 1) : "+") + '</div>';
+  rl.appendChild(el);
+});
+
+// ---- Schwebende Bloecke ----
+const bc = document.getElementById("blocks");
+for (let i = 0; i < 14; i++) {
+  const b = document.createElement("i");
+  b.style.left = Math.random() * 100 + "%";
+  b.style.animationDuration = (16 + Math.random() * 18) + "s";
+  b.style.animationDelay = (-Math.random() * 25) + "s";
+  const s = 12 + Math.random() * 18;
+  b.style.width = b.style.height = s + "px";
+  bc.appendChild(b);
+}
+
+// ---- Rangliste ----
+const PAGE = 25;
+const rowsEl = document.getElementById("rows");
+const msgEl = document.getElementById("msg");
+const moreEl = document.getElementById("more");
+const qEl = document.getElementById("q");
+let offset = 0, total = 0, query = "";
+// Zaehler statt eines "gerade beschaeftigt"-Schalters: eine neue Suche darf eine
+// laufende nie verwerfen, sonst passt die Liste nicht mehr zum Suchfeld. Nach
+// dem Ruhezustand braucht der Server bis zu 50 Sekunden - da tippt man leicht
+// weiter, waehrend die erste Anfrage noch unterwegs ist.
+let reqId = 0;
+
 const avatar = p => "https://mc-heads.net/avatar/" +
-  encodeURIComponent(p.uuid || p.name || "MHF_Steve") + "/26";
+  encodeURIComponent(p.uuid || p.name || "MHF_Steve") + "/28";
 
 function render(players, append) {
   if (!append) rowsEl.innerHTML = "";
-  for (const p of players) {
+  players.forEach((p, i) => {
     const r = rankOf(p.elo);
     const el = document.createElement("div");
     el.className = "row" + (p.provisional ? " provisional" : "");
+    el.style.animationDelay = Math.min(i * 28, 500) + "ms";
+    const medal = !p.provisional && p.pos <= 3 ? " m" + p.pos : "";
     el.innerHTML =
-      '<div class="pos' + (p.pos <= 3 && !p.provisional ? " top" : "") + '">' + p.pos + '</div>' +
+      '<div class="pos' + medal + '">' + p.pos + '</div>' +
       '<div class="who"><img loading="lazy" alt="" src="' + avatar(p) + '">' +
         '<span class="name">' + esc(p.name || "unknown") + '</span></div>' +
       '<div class="rank" style="color:' + r.color + '">' + r.name + '</div>' +
       '<div class="elo">' + p.elo + '</div>' +
-      '<div class="kd">' + p.kills + " / " + p.deaths + '</div>';
+      '<div class="kd">' + p.kills + "/" + p.deaths + '</div>';
     rowsEl.appendChild(el);
-  }
+  });
 }
 
 async function load(append) {
-  if (busy) return;
-  busy = true;
+  const mine = ++reqId;
+  const from = offset;
   moreEl.disabled = true;
+  if (!append) msgEl.hidden = false, msgEl.textContent = "Loading…";
   try {
-    const url = "/leaderboard?limit=" + PAGE + "&offset=" + offset +
+    const url = "/leaderboard?limit=" + PAGE + "&offset=" + from +
                 (query ? "&q=" + encodeURIComponent(query) : "");
     const data = await fetch(url).then(r => r.json());
+    // Waehrend des Wartens wurde schon wieder getippt: diese Antwort ist alt.
+    if (mine !== reqId) return;
     total = data.total;
     render(data.players, append);
-    offset += data.players.length;
-
+    offset = from + data.players.length;
     msgEl.hidden = total > 0;
     if (total === 0) {
       msgEl.textContent = query
@@ -220,39 +473,56 @@ async function load(append) {
         : "No ranked players yet — be the first.";
     }
     moreEl.hidden = offset >= total;
-    moreEl.textContent = "Load more (" + (total - offset) + " left)";
+    moreEl.textContent = "LOAD MORE (" + (total - offset) + ")";
   } catch (e) {
+    if (mine !== reqId) return;
     msgEl.hidden = false;
     msgEl.textContent = "Leaderboard unavailable right now.";
   } finally {
-    busy = false;
-    moreEl.disabled = false;
+    if (mine === reqId) moreEl.disabled = false;
   }
+}
+
+// Zahlen laufen hoch statt zu springen.
+function countTo(el, target) {
+  const dur = 850, from = 0;
+  const done = () => { el.textContent = target.toLocaleString("en-US"); };
+  // Ohne Animation, wenn sie abgestellt ist, nichts zu zaehlen waere, oder die
+  // Seite gerade unsichtbar ist - dort laeuft requestAnimationFrame nicht, und
+  // die Zahl bliebe auf dem Startwert stehen.
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || target === 0 || document.hidden) {
+    done();
+    return;
+  }
+  const start = performance.now();
+  let finished = false;
+  function step(now) {
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + (target - from) * eased).toLocaleString("en-US");
+    if (t < 1) requestAnimationFrame(step); else finished = true;
+  }
+  requestAnimationFrame(step);
+  // Sicherheitsnetz: laeuft die Animation aus irgendeinem Grund nicht an,
+  // steht am Ende trotzdem der richtige Wert da.
+  setTimeout(() => { if (!finished) done(); }, dur + 400);
 }
 
 async function loadStats() {
   try {
     const s = await fetch("/stats").then(r => r.json());
-    // Feste Sprache: sonst wuerde ein deutscher Browser "2.140" schreiben,
-    // waehrend die Elo-Spalte daneben 2140 zeigt.
-    const num = n => n.toLocaleString("en-US");
-    document.getElementById("s-players").textContent = num(s.players);
-    document.getElementById("s-kills").textContent   = num(s.kills);
-    document.getElementById("s-top").textContent     = s.top_elo;
-  } catch (e) { /* Kennzahlen sind Beiwerk, Fehler still schlucken */ }
+    countTo(document.getElementById("s-players"), s.players);
+    countTo(document.getElementById("s-kills"), s.kills);
+    countTo(document.getElementById("s-top"), s.top_elo);
+  } catch (e) { /* Kennzahlen sind Beiwerk */ }
 }
 
 moreEl.addEventListener("click", () => load(true));
 
-// Erst tippen lassen, dann suchen - sonst eine Anfrage pro Tastendruck.
 let timer;
 qEl.addEventListener("input", () => {
   clearTimeout(timer);
-  timer = setTimeout(() => {
-    query = qEl.value.trim();
-    offset = 0;
-    load(false);
-  }, 250);
+  timer = setTimeout(() => { query = qEl.value.trim(); offset = 0; load(false); }, 250);
 });
 
 load(false);
