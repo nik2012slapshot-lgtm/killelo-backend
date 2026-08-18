@@ -231,7 +231,14 @@
     animation: rowin .35s ease both;
   }
   .badge-card:hover { transform: translateY(-5px); }
-  .badge-card img { width: 100%; max-width: 118px; display: block; margin: 0 auto 8px; }
+  .badge-card img {
+    display: block; margin: 0 auto 8px;
+    width: 100%; max-width: 118px; height: 130px;
+    /* Feste Hoehe, Bild eingepasst: die Wappen sind unterschiedlich hoch,
+       sonst stehen die Elo-Bereiche darunter auf verschiedenen Linien. */
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
   .badge-card .th {
     font-family: "PixelMC", "Courier New", monospace; font-size: 9px;
     color: var(--muted); line-height: 1.5;
@@ -482,7 +489,7 @@ RANKS.slice().reverse().forEach((r, i, arr) => {
   card.className = "badge-card";
   card.style.animationDelay = (i * 55) + "ms";
   const img = document.createElement("img");
-  img.src = "/static/ranks/" + r.name.toLowerCase() + ".svg";
+  img.src = "/static/ranks/" + r.name.toLowerCase() + ".png";
   img.alt = r.name;
   img.loading = "lazy";
   const th = document.createElement("div");
