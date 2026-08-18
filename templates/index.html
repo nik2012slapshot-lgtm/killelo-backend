@@ -44,14 +44,29 @@
     overflow-x: hidden;
   }
 
-  /* Pixelraster im Hintergrund - zwei feine Linienmuster uebereinander. */
+  /* Hintergrund: eine Wand aus Bloecken. Die Textur ist selbst erzeugt
+     (tools/make_blocks.py) - Mojangs eigene Texturen duerfen nicht auf einer
+     fremden Seite weiterverbreitet werden. Darueber liegt ein Farbschleier,
+     damit die Wand nicht vom Inhalt ablenkt. */
   body::before {
     content: "";
     position: fixed; inset: 0; z-index: -2;
     background:
-      linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px) 0 0 / 32px 32px,
-      linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px) 0 0 / 32px 32px,
-      radial-gradient(ellipse at 50% -8%, #2b4a3a 0%, #1a2436 34%, var(--bg) 72%);
+      linear-gradient(rgba(16,20,28,.55), rgba(16,20,28,.78)),
+      radial-gradient(ellipse at 50% -8%, rgba(60,140,80,.5) 0%, rgba(26,36,54,.5) 38%, transparent 72%),
+      url("/static/blocks/deepslate.png") 0 0 / 48px 48px;
+    image-rendering: pixelated;
+  }
+
+  /* Feine Fugen zwischen den Bloecken - erst das macht aus der Textur eine Mauer. */
+  body::after {
+    content: "";
+    position: fixed; inset: 0; z-index: -2; pointer-events: none;
+    background:
+      linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px) 0 2px / 48px 48px,
+      linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px) 2px 0 / 48px 48px,
+      linear-gradient(rgba(0,0,0,.45) 2px, transparent 2px) 0 0 / 48px 48px,
+      linear-gradient(90deg, rgba(0,0,0,.45) 2px, transparent 2px) 0 0 / 48px 48px;
   }
 
   /* Langsam steigende Bloecke - dezent, nicht ablenkend. */
@@ -100,7 +115,9 @@
     font-family: "PixelMC", "Courier New", monospace;
     font-weight: 400; letter-spacing: 0;
     color: var(--text); text-decoration: none;
-    background: var(--panel);
+    background: linear-gradient(rgba(51,60,74,.82), rgba(51,60,74,.82)),
+                url("/static/blocks/stone.png") 0 0 / 32px 32px;
+    image-rendering: pixelated;
     border: 0;
     border-top: 3px solid var(--panel-hi);
     border-left: 3px solid var(--panel-hi);
@@ -135,7 +152,10 @@
   }
 
   .panel {
-    background: rgba(27,33,43,.86);
+    background:
+      linear-gradient(rgba(27,33,43,.82), rgba(27,33,43,.88)),
+      url("/static/blocks/stone.png") 0 0 / 64px 64px;
+    image-rendering: pixelated;
     border-top: 3px solid var(--panel-hi);
     border-left: 3px solid var(--panel-hi);
     border-right: 3px solid var(--panel-lo);
