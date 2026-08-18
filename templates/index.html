@@ -252,7 +252,8 @@
   .rankrow .th { color: var(--muted); font-size: 10px; font-family: "PixelMC", "Courier New", monospace; }
 
   /* ---- Mods ---- */
-  .mods { display: grid; gap: 10px; }
+  .mods { display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 700px) { .mods { grid-template-columns: 1fr; } }
   .mod {
     background: var(--panel-lo); padding: 14px;
     border-top: 2px solid var(--panel); border-left: 2px solid var(--panel);
@@ -273,12 +274,35 @@
   footer { margin-top: 26px; text-align: center; color: var(--muted); font-size: 12px; }
   footer a { color: var(--grass); }
 
-  @media (max-width: 620px) { .badges { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 580px) {
-    .row { grid-template-columns: 34px 1fr 70px 58px; gap: 7px; }
-    .kd { display: none; }
+  /* ---- Handy ----
+     Die Pixelschrift traegt breit: mit den Desktop-Groessen laufen Knoepfe,
+     Reiterleiste und Tabelle ueber den Rand. overflow-x:hidden versteckt nur
+     die Scrollleiste - abgeschnitten waere der Inhalt trotzdem. */
+  @media (max-width: 620px) {
+    .wrap { padding: 20px 10px 50px; }
+    .badges { grid-template-columns: repeat(2, 1fr); }
+    .btn, .tab { padding: 11px 12px; font-size: 10px; }
+    .cta { gap: 7px; }
+    nav { gap: 5px; margin-top: 24px; }
+    .panel { padding: 12px 10px; }
+    .tagline { font-size: 13px; }
     .stats { gap: 6px; }
-    .stat b { font-size: 19px; }
+    .stat b { font-size: 16px; }
+    .stat span { font-size: 8px; letter-spacing: .04em; }
+    .row { grid-template-columns: 30px 1fr 78px 60px; gap: 6px; padding: 10px 4px; }
+    .kd, .row.head .kd { display: none; }
+    .row .rank { font-size: 7px; }
+    .rank span { padding: 4px 5px; }
+    .who img { width: 24px; height: 24px; }
+    .row.top3 .who img { width: 30px; height: 30px; }
+    .row.top3 .name { font-size: 14px; }
+    .elo { font-size: 10px; }
+    #q { font-size: 10px; }
+    h2.pixel { font-size: 10px; }
+  }
+  @media (max-width: 400px) {
+    .btn, .tab { padding: 10px 9px; font-size: 9px; }
+    .row { grid-template-columns: 26px 1fr 66px 52px; }
   }
 
   /* Wer Bewegung abgestellt hat, bekommt keine. */
@@ -348,6 +372,12 @@
         <p>Kill-based Elo for any PvP server. Ranks, killstreaks, anti-farming, tab-list tags —
            entirely client-side.</p>
         <a class="btn green pixel" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">DOWNLOAD</a>
+      </div>
+      <div class="mod">
+        <h3>Linked <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <p>One health bar for everyone: damage hits all of you, and when it runs out you all die
+           together. Plus a shared bag — one player puts something in, anyone can take it out.
+           Built for co-op runs.</p>
       </div>
       <div class="mod">
         <h3>Orphaned <span class="badge soon">IN DEVELOPMENT</span></h3>
