@@ -1,0 +1,16 @@
+press-start-2p.woff2
+====================
+
+Font:      Press Start 2P
+Copyright: Copyright 2012 The Press Start 2P Project Authors
+Licence:   SIL Open Font License, Version 1.1
+Full text: https://openfontlicense.org
+Source:    https://fonts.google.com/specimen/Press+Start+2P
+
+Die Lizenz erlaubt das Mitliefern und Einbetten in eine Webseite. Sie verlangt
+im Gegenzug, dass dieser Hinweis erhalten bleibt und die Schrift nicht unter
+ihrem urspruenglichen Namen veraendert weitergegeben wird.
+
+Die Datei liegt bewusst hier im Projekt statt bei Google: so laedt die Seite
+nichts von fremden Servern nach - kein zusaetzlicher Verbindungsaufbau, und die
+IP-Adressen der Besucher gehen niemanden ausser dem eigenen Server etwas an.

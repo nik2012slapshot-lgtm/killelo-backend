@@ -10,17 +10,22 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>&#9876;</text></svg>">
 <style>
   /* ---------------------------------------------------------------
-     Minecraft-Anmutung ohne fremde Schriften oder Bilder: der Look
-     entsteht aus hartem Textschatten, eckigen Kanten und den typischen
-     3D-Raendern der Spiel-Oberflaeche (hell oben/links, dunkel unten/
-     rechts). Damit bleibt die Seite ohne externe Abhaengigkeit.
+     Die Pixelschrift liegt im Projekt (static/), nicht bei Google:
+     kein Nachladen von fremden Servern, keine Besucher-IPs nach aussen.
+     Lizenz und Herkunft stehen in static/FONT-LICENSE.txt.
      --------------------------------------------------------------- */
+  @font-face {
+    font-family: "PixelMC";
+    src: url("/static/press-start-2p.woff2") format("woff2");
+    font-display: swap;
+  }
+
   :root {
-    --bg: #14181f;
+    --bg: #10141c;
     --bg2: #1b212b;
-    --panel: #2b323d;
-    --panel-hi: #3d4655;
-    --panel-lo: #171c24;
+    --panel: #333c4a;
+    --panel-hi: #4d5a6d;
+    --panel-lo: #1c222c;
     --stone: #8b8b8b;
     --text: #e8eef5;
     --muted: #97a3b4;
@@ -46,7 +51,7 @@
     background:
       linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px) 0 0 / 32px 32px,
       linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px) 0 0 / 32px 32px,
-      radial-gradient(ellipse at 50% -10%, #223047 0%, var(--bg) 60%);
+      radial-gradient(ellipse at 50% -8%, #2b4a3a 0%, #1a2436 34%, var(--bg) 72%);
   }
 
   /* Langsam steigende Bloecke - dezent, nicht ablenkend. */
@@ -55,7 +60,7 @@
     position: absolute; bottom: -60px;
     width: 22px; height: 22px;
     background: var(--grass-dark);
-    opacity: .13;
+    opacity: .2;
     animation: rise linear infinite;
   }
   @keyframes rise {
@@ -66,9 +71,9 @@
   }
 
   .pixel {
-    font-family: "Courier New", Consolas, monospace;
-    font-weight: 700;
-    letter-spacing: .06em;
+    font-family: "PixelMC", "Courier New", monospace;
+    font-weight: 400;
+    letter-spacing: 0;
     text-shadow: 3px 3px 0 rgba(0,0,0,.55);
   }
 
@@ -78,21 +83,22 @@
   header { text-align: center; margin-bottom: 22px; }
   h1 {
     margin: 0;
-    font-size: clamp(30px, 7vw, 52px);
-    line-height: 1.1;
+    font-size: clamp(30px, 7.4vw, 62px);
+    line-height: 1.3;
+    text-shadow: 5px 5px 0 rgba(0,0,0,.6), 0 0 34px rgba(108,192,74,.4);
     color: var(--grass);
     animation: pop .5s cubic-bezier(.2,1.4,.4,1) both;
   }
   h1 span { color: var(--gold); display: inline-block; animation: sway 3.5s ease-in-out infinite; }
   @keyframes pop { from { transform: scale(.82); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   @keyframes sway { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
-  .tagline { margin: 8px 0 0; color: var(--muted); font-size: 14px; animation: fade .6s .15s both; }
+  .tagline { margin: 16px 0 0; color: #b9c6d6; font-size: 15px; animation: fade .6s .15s both; }
 
   /* ---- Minecraft-Knoepfe ---- */
   .btn, .tab {
     display: inline-block; cursor: pointer;
-    font-family: "Courier New", Consolas, monospace;
-    font-weight: 700; letter-spacing: .04em;
+    font-family: "PixelMC", "Courier New", monospace;
+    font-weight: 400; letter-spacing: 0;
     color: var(--text); text-decoration: none;
     background: var(--panel);
     border: 0;
@@ -100,7 +106,9 @@
     border-left: 3px solid var(--panel-hi);
     border-right: 3px solid var(--panel-lo);
     border-bottom: 3px solid var(--panel-lo);
-    padding: 10px 18px;
+    padding: 15px 24px;
+    font-size: 13px;
+    line-height: 1.4;
     text-shadow: 2px 2px 0 rgba(0,0,0,.5);
     transition: background .12s, transform .12s;
   }
@@ -117,9 +125,9 @@
          animation: fade .6s .25s both; }
 
   /* ---- Reiter ---- */
-  nav { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 26px 0 0;
+  nav { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 34px 0 0;
         animation: fade .6s .3s both; }
-  .tab { font-size: 13px; padding: 10px 14px; opacity: .72; }
+  .tab { font-size: 12px; padding: 14px 18px; opacity: .8; line-height: 1.4; }
   .tab[aria-selected="true"] {
     opacity: 1; background: var(--grass-dark);
     border-top-color: #7ed85c; border-left-color: #7ed85c;
@@ -140,20 +148,20 @@
   @keyframes slidein { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
   @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
 
-  h2.pixel { font-size: 17px; margin: 0 0 14px; color: var(--gold); }
+  h2.pixel { font-size: 12px; line-height: 1.6; margin: 0 0 14px; color: var(--gold); }
   h2.pixel::before { content: "▎"; color: var(--grass); }
 
   /* ---- Kennzahlen ---- */
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
   .stat {
-    background: var(--panel-lo); padding: 14px 8px; text-align: center;
+    background: var(--panel-lo); padding: 12px 8px; text-align: center;
     border-top: 2px solid var(--panel); border-left: 2px solid var(--panel);
     transition: transform .15s;
   }
   .stat:hover { transform: translateY(-3px); }
-  .stat b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; color: var(--gold);
-            font-family: "Courier New", monospace; text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
-  .stat span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; color: var(--gold);
+            font-family: "PixelMC", "Courier New", monospace; text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
+  .stat span { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
 
   /* ---- Suche ---- */
   #q {
@@ -161,29 +169,47 @@
     background: var(--panel-lo); color: var(--text);
     border: 0; border-top: 3px solid var(--panel-lo); border-left: 3px solid var(--panel-lo);
     border-right: 3px solid var(--panel); border-bottom: 3px solid var(--panel);
-    font: 14px "Courier New", monospace; outline: none;
+    font: 11px "PixelMC", "Courier New", monospace; outline: none;
   }
   #q:focus { border-top-color: var(--grass-dark); border-left-color: var(--grass-dark); }
   #q::placeholder { color: #66717f; }
 
   /* ---- Rangliste ---- */
   .row {
-    display: grid; grid-template-columns: 48px 1fr 96px 76px 62px;
-    align-items: center; gap: 10px; padding: 9px 10px;
-    border-bottom: 1px solid rgba(255,255,255,.05);
+    display: grid; grid-template-columns: 44px 1fr 104px 72px 58px;
+    align-items: center; gap: 10px; padding: 12px 10px;
+    border-bottom: 1px solid rgba(255,255,255,.07);
     animation: rowin .3s ease both;
   }
   @keyframes rowin { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
   .row.head { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
               background: var(--panel-lo); animation: none; }
-  .row:not(.head):hover { background: rgba(108,192,74,.09); }
-  .pos { text-align: center; font-family: "Courier New", monospace; font-weight: 700; color: var(--muted); }
+  .row:not(.head):hover { background: rgba(108,192,74,.12); }
+  /* Die ersten drei tragen die Seite - vorher sah Platz 1 aus wie Platz 22. */
+  .row.top3 { padding: 16px 10px; background: linear-gradient(90deg, rgba(255,255,255,.06), transparent 60%); }
+  .row.top3 .name { font-size: 17px; font-weight: 700; }
+  .row.top3 .elo { font-size: 15px; }
+  .row.top3 .who img { width: 38px; height: 38px; }
+  .row.r1 { border-left: 5px solid #ffd700; }
+  .row.r2 { border-left: 5px solid #cfd6dd; }
+  .row.r3 { border-left: 5px solid #cd7f32; }
+  .pos.m1, .pos.m2, .pos.m3 { font-size: 15px; }
+  .pos { text-align: center; font-size: 11px; font-family: "PixelMC", "Courier New", monospace; color: var(--muted); }
   .pos.m1 { color: #ffd700; } .pos.m2 { color: #cfd6dd; } .pos.m3 { color: #cd7f32; }
   .who { display: flex; align-items: center; gap: 9px; min-width: 0; }
   .who img { width: 28px; height: 28px; image-rendering: pixelated; flex: none; background: var(--panel-lo); }
   .who .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .rank { font-size: 12px; font-family: "Courier New", monospace; font-weight: 700; }
-  .elo { text-align: right; font-family: "Courier New", monospace; font-weight: 700;
+  .rank { font-size: 9px; font-family: "PixelMC", "Courier New", monospace; line-height: 1.4;
+          text-align: center; }
+  .rank span {
+    display: inline-block; padding: 5px 8px;
+    /* Hintergrundfarbe setzt das Skript je Rang. currentColor waere hier eine
+       Falle: es loest sich am eigenen Element auf, dessen Textfarbe wir gerade
+       ueberschreiben - die Plakette faerbte sich damit selbst schwarz. */
+    color: #10141c;
+    box-shadow: 2px 2px 0 rgba(0,0,0,.45);
+  }
+  .elo { text-align: right; font-size: 11px; font-family: "PixelMC", "Courier New", monospace;
          font-variant-numeric: tabular-nums; }
   .kd { text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .provisional { opacity: .5; }
@@ -194,6 +220,23 @@
   #more[hidden] { display: none; }
 
   /* ---- Raenge ---- */
+  .badges {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .badge-card {
+    background: var(--panel-lo); padding: 12px 8px 10px; text-align: center;
+    border-top: 2px solid var(--panel); border-left: 2px solid var(--panel);
+    transition: transform .18s;
+    animation: rowin .35s ease both;
+  }
+  .badge-card:hover { transform: translateY(-5px); }
+  .badge-card img { width: 100%; max-width: 118px; display: block; margin: 0 auto 8px; }
+  .badge-card .th {
+    font-family: "PixelMC", "Courier New", monospace; font-size: 9px;
+    color: var(--muted); line-height: 1.5;
+  }
+
   .ranks { display: grid; gap: 8px; }
   .rankrow {
     display: grid; grid-template-columns: 16px 1fr auto; gap: 12px; align-items: center;
@@ -204,9 +247,9 @@
   }
   .rankrow:hover { transform: translateX(6px); background: var(--panel); }
   .rankrow .dot { width: 13px; height: 13px; background: currentColor; }
-  .rankrow .nm { font-family: "Courier New", monospace; font-weight: 700; letter-spacing: .05em;
+  .rankrow .nm { font-family: "PixelMC", "Courier New", monospace; font-size: 11px; letter-spacing: 0;
                  text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
-  .rankrow .th { color: var(--muted); font-size: 12px; font-family: "Courier New", monospace; }
+  .rankrow .th { color: var(--muted); font-size: 10px; font-family: "PixelMC", "Courier New", monospace; }
 
   /* ---- Mods ---- */
   .mods { display: grid; gap: 10px; }
@@ -217,12 +260,12 @@
     animation: rowin .3s ease both;
   }
   .mod:hover { transform: translateY(-3px); }
-  .mod h3 { margin: 0 0 5px; font-size: 15px; font-family: "Courier New", monospace;
+  .mod h3 { margin: 0 0 9px; font-size: 11px; line-height: 1.6; font-family: "PixelMC", "Courier New", monospace;
             text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
   .mod p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
   .badge {
-    display: inline-block; font-size: 10px; padding: 3px 8px; margin-left: 8px;
-    font-family: "Courier New", monospace; letter-spacing: .08em; vertical-align: middle;
+    display: inline-block; font-size: 7px; padding: 5px 7px; margin-left: 6px;
+    font-family: "PixelMC", "Courier New", monospace; letter-spacing: 0; vertical-align: middle;
   }
   .badge.live { background: var(--grass-dark); color: #dfffd0; }
   .badge.soon { background: #4a4033; color: var(--gold); }
@@ -230,6 +273,7 @@
   footer { margin-top: 26px; text-align: center; color: var(--muted); font-size: 12px; }
   footer a { color: var(--grass); }
 
+  @media (max-width: 620px) { .badges { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 580px) {
     .row { grid-template-columns: 34px 1fr 70px 58px; gap: 7px; }
     .kd { display: none; }
@@ -287,7 +331,7 @@
   <!-- ---------- RANKS ---------- -->
   <section class="panel view" id="view-ranks" role="tabpanel" hidden>
     <h2 class="pixel">THE EIGHT RANKS</h2>
-    <div class="ranks" id="ranklist"></div>
+    <div class="badges" id="badgelist"></div>
     <p style="color:var(--muted);font-size:13px;margin:16px 0 0">
       Everyone starts at <b style="color:var(--text)">1000</b>. Beating a stronger opponent is worth
       more than beating a weaker one, and killing the same player over and over is worth less each
@@ -380,7 +424,8 @@ const esc = s => String(s).replace(/[&<>"']/g, c =>
 
 // ---- Reiter ----
 const tabs = [...document.querySelectorAll(".tab")];
-tabs.forEach(t => t.addEventListener("click", () => {
+
+function showTab(t, setHash) {
   tabs.forEach(o => o.setAttribute("aria-selected", String(o === t)));
   for (const v of document.querySelectorAll(".view")) v.hidden = true;
   const view = document.getElementById("view-" + t.dataset.view);
@@ -389,20 +434,33 @@ tabs.forEach(t => t.addEventListener("click", () => {
   view.style.animation = "none";
   void view.offsetWidth;
   view.style.animation = "";
-}));
+  // Der Reiter steht in der Adresse, damit sich ein Link auf einen
+  // bestimmten Bereich verschicken laesst (…/#ranks).
+  if (setHash) history.replaceState(null, "", "#" + t.dataset.view);
+}
 
-// ---- Rangtabelle aufbauen ----
-const rl = document.getElementById("ranklist");
-RANKS.slice().reverse().forEach((r, i) => {
-  const next = RANKS.slice().reverse()[i + 1];
-  const el = document.createElement("div");
-  el.className = "rankrow";
-  el.style.color = r.color;
-  el.style.animationDelay = (i * 45) + "ms";
-  el.innerHTML = '<div class="dot"></div>' +
-    '<div class="nm">' + r.name + '</div>' +
-    '<div class="th">' + r.min + (next ? " – " + (next.min - 1) : "+") + '</div>';
-  rl.appendChild(el);
+tabs.forEach(t => t.addEventListener("click", () => showTab(t, true)));
+
+const gewuenscht = tabs.find(t => t.dataset.view === location.hash.slice(1));
+if (gewuenscht) showTab(gewuenscht, false);
+
+// ---- Rangwand aufbauen ----
+const bl = document.getElementById("badgelist");
+RANKS.slice().reverse().forEach((r, i, arr) => {
+  const next = arr[i + 1];
+  const card = document.createElement("div");
+  card.className = "badge-card";
+  card.style.animationDelay = (i * 55) + "ms";
+  const img = document.createElement("img");
+  img.src = "/static/ranks/" + r.name.toLowerCase() + ".svg";
+  img.alt = r.name;
+  img.loading = "lazy";
+  const th = document.createElement("div");
+  th.className = "th";
+  th.textContent = r.min + (next ? " - " + (next.min - 1) : "+");
+  card.appendChild(img);
+  card.appendChild(th);
+  bl.appendChild(card);
 });
 
 // ---- Schwebende Bloecke ----
@@ -438,14 +496,18 @@ function render(players, append) {
   players.forEach((p, i) => {
     const r = rankOf(p.elo);
     const el = document.createElement("div");
-    el.className = "row" + (p.provisional ? " provisional" : "");
+    // Die ersten drei bekommen mehr Gewicht - sonst ist die Liste ein
+    // gleichfoermiger Block und der Erste faellt niemandem auf.
+    const podium = !p.provisional && p.pos <= 3;
+    el.className = "row" + (p.provisional ? " provisional" : "")
+                 + (podium ? " top3 r" + p.pos : "");
     el.style.animationDelay = Math.min(i * 28, 500) + "ms";
-    const medal = !p.provisional && p.pos <= 3 ? " m" + p.pos : "";
+    const medal = podium ? " m" + p.pos : "";
     el.innerHTML =
       '<div class="pos' + medal + '">' + p.pos + '</div>' +
       '<div class="who"><img loading="lazy" alt="" src="' + avatar(p) + '">' +
         '<span class="name">' + esc(p.name || "unknown") + '</span></div>' +
-      '<div class="rank" style="color:' + r.color + '">' + r.name + '</div>' +
+      '<div class="rank"><span style="background:' + r.color + '">' + r.name + '</span></div>' +
       '<div class="elo">' + p.elo + '</div>' +
       '<div class="kd">' + p.kills + "/" + p.deaths + '</div>';
     rowsEl.appendChild(el);
