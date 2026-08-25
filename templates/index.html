@@ -123,7 +123,7 @@
   .btn:disabled { opacity: .5; cursor: default; transform: none; }
 
   /* ---------------- Kennzahlen ---------------- */
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 46px 0 12px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 46px 0 12px; }
   .stat {
     padding: 22px 18px; border-radius: 16px; text-align: center;
     border: 1px solid var(--line); background: var(--card); backdrop-filter: blur(10px);
@@ -318,7 +318,6 @@
     <div class="stats">
       <div class="stat" id="dl-card" title="Modrinth and CurseForge combined">
         <b id="s-downloads">0</b><span>Downloads</span></div>
-      <div class="stat"><b id="s-players">0</b><span>Players</span></div>
       <div class="stat"><b id="s-kills">0</b><span>Kills</span></div>
       <div class="stat"><b id="s-top">0</b><span>Top Elo</span></div>
     </div>
@@ -606,7 +605,6 @@ async function loadDownloads() {
 async function loadStats() {
   try {
     const s = await fetch("/stats").then(r => r.json());
-    countTo(document.getElementById("s-players"), s.players);
     countTo(document.getElementById("s-kills"), s.kills);
     countTo(document.getElementById("s-top"), s.top_elo);
   } catch (e) { /* Kennzahlen sind Beiwerk */ }
