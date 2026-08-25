@@ -145,6 +145,8 @@ def init_db():
         )
         """,
         "CREATE INDEX IF NOT EXISTS players_board ON players (is_mod_user, elo DESC)",
+        # Sortiert wird ueber alle Spieler, nicht mehr nur ueber die mit Mod.
+        "CREATE INDEX IF NOT EXISTS players_elo ON players (elo DESC)",
     ]
     with closing(connect()) as d:
         for statement in schema:
@@ -387,10 +389,15 @@ def leaderboard():
     # Die Platznummer muss die *ganze* Rangliste meinen, nicht nur die
     # gefilterte Seite - deshalb wird sie in einer Unterabfrage vergeben und
     # erst danach gesucht und geblaettert.
+    # Es stehen alle Spieler drin, auch die ohne Mod. Ihre Kaempfe kommen
+    # von den Clients, die dabei waren; ohne sie waere die Rangliste ein
+    # Ausschnitt aus wenigen Leuten und saehe leerer aus, als der Server ist.
+    # Wer nicht darin auftauchen will, kann sich streichen lassen (Hinweis
+    # steht auf der Website).
     ranked = """
         SELECT uuid, name, elo, kills, deaths, streak,
                ROW_NUMBER() OVER (ORDER BY elo DESC, name ASC) AS pos
-        FROM players WHERE is_mod_user = 1
+        FROM players
     """
     args = []
     where = ""
@@ -428,7 +435,7 @@ def stats():
     row = ex(
         d,
         "SELECT COUNT(*) AS players, COALESCE(SUM(kills), 0) AS kills,"
-        " COALESCE(MAX(elo), 0) AS top FROM players WHERE is_mod_user = 1",
+        " COALESCE(MAX(elo), 0) AS top FROM players",
     ).fetchone()
     return jsonify(players=row["players"], kills=row["kills"], top_elo=row["top"])
 
