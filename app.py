@@ -20,8 +20,11 @@ header  X-Api-Key: <same value>.
 import math
 import os
 import re
+import json
 import sqlite3
 import time
+import urllib.error
+import urllib.request
 from contextlib import closing
 
 from flask import Flask, jsonify, render_template, request, g
@@ -404,6 +407,73 @@ def stats():
         " COALESCE(MAX(elo), 0) AS top FROM players WHERE is_mod_user = 1",
     ).fetchone()
     return jsonify(players=row["players"], kills=row["kills"], top_elo=row["top"])
+
+
+# ---------------------------------------------------------------------------
+# Downloadzahlen von Modrinth und CurseForge
+# ---------------------------------------------------------------------------
+# Beide Seiten zaehlen getrennt, und keine der beiden Zahlen allein sagt, wie
+# oft die Mod wirklich geholt wurde. Auf der Website steht deshalb die Summe.
+#
+# CurseForge braucht fuer die eigene Schnittstelle einen Schluessel. cfwidget
+# ist ein oeffentlicher Dienst, der genau diese Zahl ohne Anmeldung liefert.
+#
+# Zwei Dinge sind hier wichtig, sonst faellt die ganze Seite aus:
+#   * Ein kurzer Timeout. Es laeuft nur ein Arbeitsprozess - haengt der an
+#     einer fremden Schnittstelle, antwortet die Seite gar nicht mehr.
+#   * Ein Zwischenspeicher. Sonst fragen wir bei jedem Besucher erneut nach,
+#     und die Zahl aendert sich ohnehin nur langsam.
+MODRINTH_URL = "https://api.modrinth.com/v2/project/elo-system"
+CURSEFORGE_URL = "https://api.cfwidget.com/minecraft/mc-mods/elo-system"
+DL_TIMEOUT_S = 4
+DL_CACHE_S = 1800  # 30 Minuten
+
+_dl_cache = {"zeit": 0.0, "wert": None}
+
+
+def _hole_json(url):
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "killelo-leaderboard/1.0 (+https://killelo-backend.onrender.com)"})
+    with urllib.request.urlopen(req, timeout=DL_TIMEOUT_S) as antwort:
+        return json.loads(antwort.read().decode("utf-8"))
+
+
+@app.get("/downloads")
+def downloads():
+    """Downloads beider Plattformen, zwischengespeichert."""
+    jetzt = time.time()
+    alt = _dl_cache["wert"]
+    if alt is not None and jetzt - _dl_cache["zeit"] < DL_CACHE_S:
+        return jsonify(alt)
+
+    modrinth = curseforge = None
+    try:
+        modrinth = int(_hole_json(MODRINTH_URL)["downloads"])
+    except Exception as exc:
+        app.logger.warning("Modrinth-Zahl nicht erreichbar: %s", exc)
+    try:
+        curseforge = int(_hole_json(CURSEFORGE_URL)["downloads"]["total"])
+    except Exception as exc:
+        app.logger.warning("CurseForge-Zahl nicht erreichbar: %s", exc)
+
+    # Faellt eine Seite aus, ist ihr letzter bekannter Wert besser als eine
+    # Null - sonst faellt die Gesamtzahl auf der Website sichtbar ein.
+    if alt:
+        if modrinth is None:
+            modrinth = alt.get("modrinth", 0)
+        if curseforge is None:
+            curseforge = alt.get("curseforge", 0)
+    modrinth = modrinth or 0
+    curseforge = curseforge or 0
+
+    wert = {"modrinth": modrinth, "curseforge": curseforge,
+            "total": modrinth + curseforge}
+    # Nur merken, wenn ueberhaupt etwas ankam. Sonst bleibt der alte Stand
+    # stehen und wir versuchen es beim naechsten Besucher gleich wieder.
+    if wert["total"] > 0:
+        _dl_cache["wert"] = wert
+        _dl_cache["zeit"] = jetzt
+    return jsonify(wert)
 
 
 @app.get("/")

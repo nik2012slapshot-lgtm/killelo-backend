@@ -123,7 +123,7 @@
   .btn:disabled { opacity: .5; cursor: default; transform: none; }
 
   /* ---------------- Kennzahlen ---------------- */
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 46px 0 12px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 46px 0 12px; }
   .stat {
     padding: 22px 18px; border-radius: 16px; text-align: center;
     border: 1px solid var(--line); background: var(--card); backdrop-filter: blur(10px);
@@ -272,7 +272,8 @@
   @media (max-width: 620px) {
     header.hero { padding-top: 52px; }
     .wrap { padding: 0 15px 48px; }
-    .stats { gap: 9px; margin-top: 34px; }
+    /* Vier Kennzahlen nebeneinander waeren auf dem Handy zu schmal. */
+    .stats { grid-template-columns: repeat(2, 1fr); gap: 9px; margin-top: 34px; }
     .stat { padding: 16px 9px; border-radius: 13px; }
     .stat span { font-size: 10.5px; letter-spacing: .06em; }
     nav { width: 100%; justify-content: stretch; }
@@ -310,11 +311,13 @@
       messages in chat. Eight ranks, killstreaks, and a global leaderboard.
     </p>
     <div class="cta">
-      <a class="btn primary" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">Get the mod</a>
+      <a class="btn primary" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">Modrinth</a>
       <a class="btn" href="https://www.curseforge.com/minecraft/mc-mods/elo-system" target="_blank" rel="noopener">CurseForge</a>
     </div>
 
     <div class="stats">
+      <div class="stat" id="dl-card" title="Modrinth and CurseForge combined">
+        <b id="s-downloads">0</b><span>Downloads</span></div>
       <div class="stat"><b id="s-players">0</b><span>Players</span></div>
       <div class="stat"><b id="s-kills">0</b><span>Kills</span></div>
       <div class="stat"><b id="s-top">0</b><span>Top Elo</span></div>
@@ -588,6 +591,18 @@ function countTo(el, target) {
   setTimeout(() => { if (!finished) done(); }, dur + 400);
 }
 
+async function loadDownloads() {
+  try {
+    const d = await fetch("/downloads").then(r => r.json());
+    countTo(document.getElementById("s-downloads"), d.total);
+    // Woraus sich die Zahl zusammensetzt, steht im Tooltip - auf der Karte
+    // selbst waere es zu viel Text fuer die Stelle.
+    document.getElementById("dl-card").title =
+      "Modrinth " + d.modrinth.toLocaleString("en-US") +
+      " + CurseForge " + d.curseforge.toLocaleString("en-US");
+  } catch (e) { /* Kennzahlen sind Beiwerk */ }
+}
+
 async function loadStats() {
   try {
     const s = await fetch("/stats").then(r => r.json());
@@ -607,7 +622,11 @@ qEl.addEventListener("input", () => {
 
 load(false);
 loadStats();
+loadDownloads();
 setInterval(loadStats, 60000);
+// Die Downloadzahlen aendern sich langsam und kommen von fremden Servern,
+// deshalb seltener als die Spielerzahlen.
+setInterval(loadDownloads, 600000);
 </script>
 </body>
 </html>
