@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ELO System — PvP Leaderboard</title>
+<meta name="description" content="Global leaderboard for the ELO System Minecraft mod. Chess-style Elo rating for PvP, built from the kill messages in chat.">
+<meta property="og:title" content="ELO System — PvP Leaderboard">
+<meta property="og:description" content="Global leaderboard for the ELO System Minecraft mod.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>&#9876;</text></svg>">
+<style>
+  /* ---------------------------------------------------------------
+     Die Pixelschrift liegt im Projekt (static/), nicht bei Google:
+     kein Nachladen von fremden Servern, keine Besucher-IPs nach aussen.
+     Lizenz und Herkunft stehen in static/FONT-LICENSE.txt.
+     --------------------------------------------------------------- */
+  @font-face {
+    font-family: "PixelMC";
+    src: url("/static/press-start-2p.woff2") format("woff2");
+    font-display: swap;
+  }
+
+  :root {
+    --bg: #0a0d14;
+    --bg2: #121722;
+    --panel: rgba(255,255,255,.045);
+    --panel-hi: rgba(255,255,255,.09);
+    --panel-lo: rgba(0,0,0,.35);
+    --line: rgba(255,255,255,.08);
+    --stone: #8b8b8b;
+    --text: #e8eef5;
+    --muted: #97a3b4;
+    --grass: #6cc04a;
+    --grass-dark: #3f7a2c;
+    --gold: #ffc93c;
+    --red: #ff4d5e;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* Hintergrund: eine Wand aus Bloecken. Die Textur ist selbst erzeugt
+     (tools/make_blocks.py) - Mojangs eigene Texturen duerfen nicht auf einer
+     fremden Seite weiterverbreitet werden. Darueber liegt ein Farbschleier,
+     damit die Wand nicht vom Inhalt ablenkt. */
+  body::before {
+    content: "";
+    position: fixed; inset: 0; z-index: -2;
+    background:
+      linear-gradient(rgba(10,13,20,.86), rgba(10,13,20,.95)),
+      radial-gradient(900px 480px at 50% -12%, rgba(108,192,74,.28) 0%, transparent 70%),
+      radial-gradient(700px 400px at 85% 10%, rgba(79,166,255,.16) 0%, transparent 70%),
+      url("/static/blocks/deepslate.png") 0 0 / 64px 64px;
+    image-rendering: pixelated;
+  }
+
+  /* Feine Fugen zwischen den Bloecken - erst das macht aus der Textur eine Mauer. */
+  body::after {
+    content: "";
+    position: fixed; inset: 0; z-index: -2; pointer-events: none;
+    background:
+      linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px) 0 0 / 64px 64px,
+      linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px) 0 0 / 64px 64px;
+  }
+
+  /* Langsam steigende Bloecke - dezent, nicht ablenkend. */
+  .blocks { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .blocks i {
+    position: absolute; bottom: -60px;
+    width: 22px; height: 22px;
+    background: var(--grass-dark);
+    opacity: .2;
+    animation: rise linear infinite;
+  }
+  @keyframes rise {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+    12%  { opacity: .16; }
+    88%  { opacity: .16; }
+    100% { transform: translateY(-105vh) rotate(180deg); opacity: 0; }
+  }
+
+  .pixel {
+    font-family: "PixelMC", "Courier New", monospace;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-shadow: 3px 3px 0 rgba(0,0,0,.55);
+  }
+
+  .wrap { max-width: 900px; margin: 0 auto; padding: 30px 14px 70px; }
+
+  /* ---- Kopf ---- */
+  header { text-align: center; margin-bottom: 22px; }
+  h1 {
+    margin: 0;
+    font-size: clamp(30px, 7.4vw, 62px);
+    line-height: 1.3;
+    color: #9fe87a;
+    text-shadow:
+      0 0 18px rgba(108,192,74,.55),
+      0 0 46px rgba(108,192,74,.30),
+      0 4px 0 rgba(0,0,0,.5);
+    animation: pop .5s cubic-bezier(.2,1.4,.4,1) both;
+  }
+  h1 span {
+    display: inline-block; color: #ffd45e;
+    text-shadow: 0 0 18px rgba(255,201,60,.55), 0 0 46px rgba(255,201,60,.28), 0 4px 0 rgba(0,0,0,.5);
+    animation: sway 3.5s ease-in-out infinite;
+  }
+  @keyframes pop { from { transform: scale(.82); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes sway { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+  .tagline { margin: 16px 0 0; color: #b9c6d6; font-size: 15px; animation: fade .6s .15s both; }
+
+  /* ---- Minecraft-Knoepfe ---- */
+  .btn, .tab {
+    display: inline-block; cursor: pointer;
+    font-family: "PixelMC", "Courier New", monospace;
+    font-weight: 400; letter-spacing: 0;
+    color: var(--text); text-decoration: none;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 22px;
+    font-size: 12px;
+    line-height: 1.4;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 14px rgba(0,0,0,.28);
+    transition: background .18s, transform .18s, border-color .18s, box-shadow .18s;
+  }
+  .btn:hover, .tab:hover {
+    background: var(--panel-hi);
+    border-color: rgba(255,255,255,.18);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.36);
+  }
+  .btn:active, .tab:active { transform: translateY(0); }
+  .btn.green {
+    text-shadow: none;
+    background: linear-gradient(135deg, #6cc04a, #3f7a2c);
+    border-color: rgba(255,255,255,.22);
+    color: #08140a;
+    box-shadow: 0 6px 20px rgba(108,192,74,.28);
+  }
+  .btn.green:hover { box-shadow: 0 10px 30px rgba(108,192,74,.4); }
+
+  .cta { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px;
+         animation: fade .6s .25s both; }
+
+  /* ---- Reiter ---- */
+  nav { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 34px 0 0;
+        animation: fade .6s .3s both; }
+  .tab { font-size: 12px; padding: 14px 18px; opacity: .8; line-height: 1.4; }
+  .tab[aria-selected="true"] {
+    opacity: 1;
+    text-shadow: none;
+    font-weight: 400;
+    background: linear-gradient(135deg, rgba(108,192,74,.9), rgba(63,122,44,.9));
+    border-color: rgba(255,255,255,.24);
+    color: #08140a;
+    box-shadow: 0 6px 20px rgba(108,192,74,.26);
+  }
+
+  .panel {
+    background: rgba(18,23,34,.72);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    backdrop-filter: blur(18px);
+    box-shadow: 0 24px 60px rgba(0,0,0,.45);
+    margin-top: 18px;
+    padding: 26px 24px;
+  }
+  .view[hidden] { display: none; }
+  .view { animation: slidein .32s ease both; }
+  @keyframes slidein { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+
+  h2.pixel { font-size: 12px; line-height: 1.6; margin: 0 0 14px; color: var(--gold); }
+  h2.pixel::before { content: "▎"; color: var(--grass); }
+
+  /* ---- Kennzahlen ---- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+  .stat {
+    background: var(--panel); padding: 20px 10px 16px; text-align: center;
+    border: 1px solid var(--line); border-radius: 14px;
+    transition: transform .18s, border-color .18s;
+  }
+  .stat:hover { transform: translateY(-4px); border-color: rgba(255,255,255,.18); }
+  .stat b {
+    display: block; font-size: 30px; font-variant-numeric: tabular-nums;
+    font-weight: 700; letter-spacing: -.02em; color: #fff;
+    font-family: "Segoe UI", system-ui, sans-serif;
+  }
+  .stat span { font-size: 10px; color: var(--muted); text-transform: uppercase;
+               letter-spacing: .14em; margin-top: 4px; display: block; }
+
+  /* ---- Suche ---- */
+  #q {
+    width: 100%; padding: 14px 16px; margin-bottom: 16px;
+    background: rgba(0,0,0,.28); color: var(--text);
+    border: 1px solid var(--line); border-radius: 12px;
+    font: 14px "Segoe UI", system-ui, sans-serif; outline: none;
+    transition: border-color .18s, background .18s;
+  }
+  #q:focus { border-color: rgba(108,192,74,.6); background: rgba(0,0,0,.4); }
+  #q::placeholder { color: #6b7683; }
+
+  /* ---- Rangliste ---- */
+  .row {
+    display: grid; grid-template-columns: 44px 1fr 104px 72px 58px;
+    align-items: center; gap: 12px; padding: 14px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    border-radius: 10px;
+    animation: rowin .3s ease both;
+  }
+  @keyframes rowin { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+  .row.head { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .14em;
+              background: transparent; border-bottom: 1px solid var(--line); animation: none; }
+  .row:not(.head):hover { background: rgba(108,192,74,.12); }
+  /* Die ersten drei tragen die Seite - vorher sah Platz 1 aus wie Platz 22. */
+  .row.top3 { padding: 18px 12px; background: linear-gradient(90deg, rgba(255,255,255,.07), transparent 65%); }
+  .row.top3 .name { font-size: 17px; font-weight: 700; }
+  .row.top3 .elo { font-size: 15px; }
+  .row.top3 .who img { width: 38px; height: 38px; }
+  .row.r1 { border-left: 5px solid #ffd700; }
+  .row.r2 { border-left: 5px solid #cfd6dd; }
+  .row.r3 { border-left: 5px solid #cd7f32; }
+  .pos.m1, .pos.m2, .pos.m3 { font-size: 15px; }
+  .pos { text-align: center; font-size: 14px; font-weight: 700; color: var(--muted);
+         font-family: "Segoe UI", system-ui, sans-serif; }
+  .pos.m1 { color: #ffd700; } .pos.m2 { color: #cfd6dd; } .pos.m3 { color: #cd7f32; }
+  .who { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .who img { width: 32px; height: 32px; image-rendering: pixelated; flex: none;
+             border-radius: 8px; background: rgba(0,0,0,.3); }
+  .who .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank { font-size: 9px; font-family: "PixelMC", "Courier New", monospace; line-height: 1.4;
+          text-align: center; }
+  .rank span {
+    display: inline-block; padding: 6px 10px; border-radius: 6px;
+    /* Hintergrundfarbe setzt das Skript je Rang. currentColor waere hier eine
+       Falle: es loest sich am eigenen Element auf, dessen Textfarbe wir gerade
+       ueberschreiben - die Plakette faerbte sich damit selbst schwarz. */
+    color: #10141c;
+    box-shadow: 0 2px 10px rgba(0,0,0,.35);
+  }
+  .elo { text-align: right; font-size: 16px; font-weight: 700;
+         font-family: "Segoe UI", system-ui, sans-serif;
+         font-variant-numeric: tabular-nums; }
+  .kd { text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .provisional { opacity: .5; }
+  .provisional .elo::after { content: " ~"; }
+
+  .msg { padding: 34px 16px; text-align: center; color: var(--muted); }
+  #more { display: block; width: 100%; margin-top: 12px; }
+  #more[hidden] { display: none; }
+
+  /* ---- Raenge ---- */
+  .badges {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .badge-card {
+    background: var(--panel-lo); padding: 12px 8px 10px; text-align: center;
+    border-top: 2px solid var(--panel); border-left: 2px solid var(--panel);
+    transition: transform .18s;
+    animation: rowin .35s ease both;
+  }
+  .badge-card:hover { transform: translateY(-5px); }
+  .badge-card img {
+    display: block; margin: 0 auto 8px;
+    width: 100%; max-width: 118px; height: 130px;
+    /* Feste Hoehe, Bild eingepasst: die Wappen sind unterschiedlich hoch,
+       sonst stehen die Elo-Bereiche darunter auf verschiedenen Linien. */
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+  .badge-card .th {
+    font-family: "PixelMC", "Courier New", monospace; font-size: 9px;
+    color: var(--muted); line-height: 1.5;
+  }
+
+  .ranks { display: grid; gap: 8px; }
+  .rankrow {
+    display: grid; grid-template-columns: 16px 1fr auto; gap: 12px; align-items: center;
+    background: var(--panel-lo); padding: 11px 13px;
+    border-left: 4px solid currentColor;
+    transition: transform .15s, background .15s;
+    animation: rowin .3s ease both;
+  }
+  .rankrow:hover { transform: translateX(6px); background: var(--panel); }
+  .rankrow .dot { width: 13px; height: 13px; background: currentColor; }
+  .rankrow .nm { font-family: "PixelMC", "Courier New", monospace; font-size: 11px; letter-spacing: 0;
+                 text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
+  .rankrow .th { color: var(--muted); font-size: 10px; font-family: "PixelMC", "Courier New", monospace; }
+
+  /* ---- Mods ---- */
+  .mods { display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 700px) { .mods { grid-template-columns: 1fr; } }
+  .mod {
+    background: var(--panel-lo); padding: 14px;
+    border-top: 2px solid var(--panel); border-left: 2px solid var(--panel);
+    transition: transform .15s;
+    animation: rowin .3s ease both;
+  }
+  .mod:hover { transform: translateY(-3px); }
+  .mod h3 { margin: 0 0 9px; font-size: 11px; line-height: 1.6; font-family: "PixelMC", "Courier New", monospace;
+            text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
+  .mod p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+  .badge {
+    display: inline-block; font-size: 7px; padding: 5px 7px; margin-left: 6px;
+    font-family: "PixelMC", "Courier New", monospace; letter-spacing: 0; vertical-align: middle;
+  }
+  .badge.live { background: var(--grass-dark); color: #dfffd0; }
+  .badge.soon { background: #4a4033; color: var(--gold); }
+
+  footer { margin-top: 26px; text-align: center; color: var(--muted); font-size: 12px; }
+  footer a { color: var(--grass); }
+
+  /* ---- Handy ----
+     Die Pixelschrift traegt breit: mit den Desktop-Groessen laufen Knoepfe,
+     Reiterleiste und Tabelle ueber den Rand. overflow-x:hidden versteckt nur
+     die Scrollleiste - abgeschnitten waere der Inhalt trotzdem. */
+  @media (max-width: 620px) {
+    .wrap { padding: 20px 10px 50px; }
+    .badges { grid-template-columns: repeat(2, 1fr); }
+    .btn, .tab { padding: 11px 12px; font-size: 10px; }
+    .cta { gap: 7px; }
+    nav { gap: 5px; margin-top: 24px; }
+    .panel { padding: 12px 10px; }
+    .tagline { font-size: 13px; }
+    .stats { gap: 6px; }
+    .stat b { font-size: 16px; }
+    .stat span { font-size: 8px; letter-spacing: .04em; }
+    .row { grid-template-columns: 30px 1fr 78px 60px; gap: 6px; padding: 10px 4px; }
+    .kd, .row.head .kd { display: none; }
+    .row .rank { font-size: 7px; }
+    .rank span { padding: 4px 5px; }
+    .who img { width: 24px; height: 24px; }
+    .row.top3 .who img { width: 30px; height: 30px; }
+    .row.top3 .name { font-size: 14px; }
+    .elo { font-size: 10px; }
+    #q { font-size: 10px; }
+    h2.pixel { font-size: 10px; }
+  }
+  @media (max-width: 400px) {
+    .btn, .tab { padding: 10px 9px; font-size: 9px; }
+    .row { grid-template-columns: 26px 1fr 66px 52px; }
+  }
+
+  /* Wer Bewegung abgestellt hat, bekommt keine. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .blocks { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="blocks" id="blocks" aria-hidden="true"></div>
+
+<div class="wrap">
+
+  <header>
+    <h1 class="pixel">ELO <span>SYSTEM</span></h1>
+    <p class="tagline">Competitive PvP ranking for any Minecraft server — built from the kill messages in chat.</p>
+    <div class="cta">
+      <a class="btn green" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">▼ Modrinth</a>
+      <a class="btn" href="https://www.curseforge.com/minecraft/mc-mods/elo-system" target="_blank" rel="noopener">▼ CurseForge</a>
+    </div>
+  </header>
+
+  <nav role="tablist" aria-label="Sections">
+    <button class="tab pixel" role="tab" aria-selected="true"  data-view="board">TOP ELO</button>
+    <button class="tab pixel" role="tab" aria-selected="false" data-view="ranks">RANKS</button>
+    <button class="tab pixel" role="tab" aria-selected="false" data-view="mods">OTHER MODS</button>
+    <button class="tab pixel" role="tab" aria-selected="false" data-view="donate">DONATE</button>
+  </nav>
+
+  <!-- ---------- TOP ELO ---------- -->
+  <section class="panel view" id="view-board" role="tabpanel">
+    <div class="stats">
+      <div class="stat"><b id="s-players">0</b><span>Players</span></div>
+      <div class="stat"><b id="s-kills">0</b><span>Kills</span></div>
+      <div class="stat"><b id="s-top">0</b><span>Top Elo</span></div>
+    </div>
+
+    <input id="q" type="search" placeholder="&gt; search player..." autocomplete="off" spellcheck="false">
+
+    <div class="row head">
+      <div class="pos">#</div><div>Player</div>
+      <div class="rank">Rank</div><div class="elo">Elo</div><div class="kd">K/D</div>
+    </div>
+    <div id="rows"></div>
+    <div id="msg" class="msg">Loading…</div>
+    <button id="more" class="btn pixel" hidden>LOAD MORE</button>
+  </section>
+
+  <!-- ---------- RANKS ---------- -->
+  <section class="panel view" id="view-ranks" role="tabpanel" hidden>
+    <h2 class="pixel">THE EIGHT RANKS</h2>
+    <div class="badges" id="badgelist"></div>
+    <p style="color:var(--muted);font-size:13px;margin:16px 0 0">
+      Everyone starts at <b style="color:var(--text)">1000</b>. Beating a stronger opponent is worth
+      more than beating a weaker one, and killing the same player over and over is worth less each
+      time, so farming does not pay.
+    </p>
+  </section>
+
+  <!-- ---------- OTHER MODS ---------- -->
+  <section class="panel view" id="view-mods" role="tabpanel" hidden>
+    <h2 class="pixel">MORE FROM THEREALNOOB</h2>
+    <div class="mods">
+      <div class="mod">
+        <h3>ELO System <span class="badge live">RELEASED</span></h3>
+        <p>Kill-based Elo for any PvP server. Ranks, killstreaks, anti-farming, tab-list tags —
+           entirely client-side.</p>
+        <a class="btn green pixel" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">DOWNLOAD</a>
+      </div>
+      <div class="mod">
+        <h3>Linked <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <p>One health bar for everyone: damage hits all of you, and when it runs out you all die
+           together. Plus a shared bag — one player puts something in, anyone can take it out.
+           Built for co-op runs.</p>
+      </div>
+      <div class="mod">
+        <h3>Orphaned <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <p>Removed a mod from your world? Minecraft silently deletes every block it owned. Orphaned
+           finds those leftovers and cleans them up.</p>
+      </div>
+      <div class="mod">
+        <h3>Map Marker <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <p>Mark out a region with two key presses, give it a name and a colour, and group regions by
+           that colour.</p>
+      </div>
+      <div class="mod">
+        <h3>ChunkView <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <p>Render distance far beyond the vanilla limit, set with a command: <code>/rd &lt;chunks&gt;</code>.</p>
+      </div>
+      <div class="mod">
+        <h3>AI Builder <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <p>Describe a building in plain text and watch it get placed block by block.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- DONATE ---------- -->
+  <section class="panel view" id="view-donate" role="tabpanel" hidden>
+    <h2 class="pixel">SUPPORT THE PROJECT</h2>
+    <p style="color:var(--muted);font-size:14px">
+      Every mod here is free, has no ads and collects nothing you did not agree to. Running the
+      leaderboard costs nothing today — it sits on free hosting — and the plan is to keep it that way.
+    </p>
+    <p style="color:var(--muted);font-size:14px">
+      If you want to help anyway, the things that actually move the needle are free:
+    </p>
+    <div class="mods" style="margin-top:14px">
+      <div class="mod">
+        <h3>★ Leave a rating</h3>
+        <p>A follow or a comment on Modrinth does more for a small mod than anything else — it decides
+           whether anyone ever finds it.</p>
+        <a class="btn green pixel" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">OPEN MODRINTH</a>
+      </div>
+      <div class="mod">
+        <h3>⚑ Tell your server</h3>
+        <p>Ask whether client-side mods are allowed, then mention it in chat. That is how most players
+           here found it.</p>
+      </div>
+      <div class="mod">
+        <h3>⚒ Report bugs and ideas</h3>
+        <p>Half the features in 1.3.0 came from players who simply said what was missing.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Made by <a href="https://modrinth.com/user/TheRealNoob" target="_blank" rel="noopener">TheRealNoob</a>
+       · Your fights count towards this leaderboard once you have the mod.
+       <code>/elo online off</code> opts out.</p>
+  </footer>
+</div>
+
+<script>
+// Gleiche Schwellen und Farben wie Rank.java in der Mod.
+const RANKS = [
+  { min: 2000, name: "LEGEND",   color: "#FF4D5E" },
+  { min: 1750, name: "CHAMPION", color: "#9B4DFF" },
+  { min: 1550, name: "MASTER",   color: "#C77DFF" },
+  { min: 1400, name: "DIAMOND",  color: "#4FA6FF" },
+  { min: 1250, name: "PLATINUM", color: "#5AE6E0" },
+  { min: 1100, name: "GOLD",     color: "#FFC93C" },
+  { min:  850, name: "SILVER",   color: "#C0C7D0" },
+  { min:    0, name: "BRONZE",   color: "#A9714B" },
+];
+const rankOf = elo => RANKS.find(r => elo >= r.min) || RANKS[RANKS.length - 1];
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ---- Reiter ----
+const tabs = [...document.querySelectorAll(".tab")];
+
+function showTab(t, setHash) {
+  tabs.forEach(o => o.setAttribute("aria-selected", String(o === t)));
+  for (const v of document.querySelectorAll(".view")) v.hidden = true;
+  const view = document.getElementById("view-" + t.dataset.view);
+  view.hidden = false;
+  // Neu anstossen, damit die Einblendung bei jedem Wechsel laeuft.
+  view.style.animation = "none";
+  void view.offsetWidth;
+  view.style.animation = "";
+  // Der Reiter steht in der Adresse, damit sich ein Link auf einen
+  // bestimmten Bereich verschicken laesst (…/#ranks).
+  if (setHash) history.replaceState(null, "", "#" + t.dataset.view);
+}
+
+tabs.forEach(t => t.addEventListener("click", () => showTab(t, true)));
+
+const gewuenscht = tabs.find(t => t.dataset.view === location.hash.slice(1));
+if (gewuenscht) showTab(gewuenscht, false);
+
+// ---- Rangwand aufbauen ----
+const bl = document.getElementById("badgelist");
+RANKS.slice().reverse().forEach((r, i, arr) => {
+  const next = arr[i + 1];
+  const card = document.createElement("div");
+  card.className = "badge-card";
+  card.style.animationDelay = (i * 55) + "ms";
+  const img = document.createElement("img");
+  img.src = "/static/ranks/" + r.name.toLowerCase() + ".png";
+  img.alt = r.name;
+  img.loading = "lazy";
+  const th = document.createElement("div");
+  th.className = "th";
+  th.textContent = r.min + (next ? " - " + (next.min - 1) : "+");
+  card.appendChild(img);
+  card.appendChild(th);
+  bl.appendChild(card);
+});
+
+// ---- Schwebende Bloecke ----
+const bc = document.getElementById("blocks");
+for (let i = 0; i < 14; i++) {
+  const b = document.createElement("i");
+  b.style.left = Math.random() * 100 + "%";
+  b.style.animationDuration = (16 + Math.random() * 18) + "s";
+  b.style.animationDelay = (-Math.random() * 25) + "s";
+  const s = 12 + Math.random() * 18;
+  b.style.width = b.style.height = s + "px";
+  bc.appendChild(b);
+}
+
+// ---- Rangliste ----
+const PAGE = 25;
+const rowsEl = document.getElementById("rows");
+const msgEl = document.getElementById("msg");
+const moreEl = document.getElementById("more");
+const qEl = document.getElementById("q");
+let offset = 0, total = 0, query = "";
+// Zaehler statt eines "gerade beschaeftigt"-Schalters: eine neue Suche darf eine
+// laufende nie verwerfen, sonst passt die Liste nicht mehr zum Suchfeld. Nach
+// dem Ruhezustand braucht der Server bis zu 50 Sekunden - da tippt man leicht
+// weiter, waehrend die erste Anfrage noch unterwegs ist.
+let reqId = 0;
+
+const avatar = p => "https://mc-heads.net/avatar/" +
+  encodeURIComponent(p.uuid || p.name || "MHF_Steve") + "/28";
+
+function render(players, append) {
+  if (!append) rowsEl.innerHTML = "";
+  players.forEach((p, i) => {
+    const r = rankOf(p.elo);
+    const el = document.createElement("div");
+    // Die ersten drei bekommen mehr Gewicht - sonst ist die Liste ein
+    // gleichfoermiger Block und der Erste faellt niemandem auf.
+    const podium = !p.provisional && p.pos <= 3;
+    el.className = "row" + (p.provisional ? " provisional" : "")
+                 + (podium ? " top3 r" + p.pos : "");
+    el.style.animationDelay = Math.min(i * 28, 500) + "ms";
+    const medal = podium ? " m" + p.pos : "";
+    el.innerHTML =
+      '<div class="pos' + medal + '">' + p.pos + '</div>' +
+      '<div class="who"><img loading="lazy" alt="" src="' + avatar(p) + '">' +
+        '<span class="name">' + esc(p.name || "unknown") + '</span></div>' +
+      '<div class="rank"><span style="background:' + r.color + '">' + r.name + '</span></div>' +
+      '<div class="elo">' + p.elo + '</div>' +
+      '<div class="kd">' + p.kills + "/" + p.deaths + '</div>';
+    rowsEl.appendChild(el);
+  });
+}
+
+async function load(append) {
+  const mine = ++reqId;
+  const from = offset;
+  moreEl.disabled = true;
+  if (!append) msgEl.hidden = false, msgEl.textContent = "Loading…";
+  try {
+    const url = "/leaderboard?limit=" + PAGE + "&offset=" + from +
+                (query ? "&q=" + encodeURIComponent(query) : "");
+    const data = await fetch(url).then(r => r.json());
+    // Waehrend des Wartens wurde schon wieder getippt: diese Antwort ist alt.
+    if (mine !== reqId) return;
+    total = data.total;
+    render(data.players, append);
+    offset = from + data.players.length;
+    msgEl.hidden = total > 0;
+    if (total === 0) {
+      msgEl.textContent = query
+        ? 'No player found for "' + query + '".'
+        : "No ranked players yet — be the first.";
+    }
+    moreEl.hidden = offset >= total;
+    moreEl.textContent = "LOAD MORE (" + (total - offset) + ")";
+  } catch (e) {
+    if (mine !== reqId) return;
+    msgEl.hidden = false;
+    msgEl.textContent = "Leaderboard unavailable right now.";
+  } finally {
+    if (mine === reqId) moreEl.disabled = false;
+  }
+}
+
+// Zahlen laufen hoch statt zu springen.
+function countTo(el, target) {
+  const dur = 850, from = 0;
+  const done = () => { el.textContent = target.toLocaleString("en-US"); };
+  // Ohne Animation, wenn sie abgestellt ist, nichts zu zaehlen waere, oder die
+  // Seite gerade unsichtbar ist - dort laeuft requestAnimationFrame nicht, und
+  // die Zahl bliebe auf dem Startwert stehen.
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || target === 0 || document.hidden) {
+    done();
+    return;
+  }
+  const start = performance.now();
+  let finished = false;
+  function step(now) {
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + (target - from) * eased).toLocaleString("en-US");
+    if (t < 1) requestAnimationFrame(step); else finished = true;
+  }
+  requestAnimationFrame(step);
+  // Sicherheitsnetz: laeuft die Animation aus irgendeinem Grund nicht an,
+  // steht am Ende trotzdem der richtige Wert da.
+  setTimeout(() => { if (!finished) done(); }, dur + 400);
+}
+
+async function loadStats() {
+  try {
+    const s = await fetch("/stats").then(r => r.json());
+    countTo(document.getElementById("s-players"), s.players);
+    countTo(document.getElementById("s-kills"), s.kills);
+    countTo(document.getElementById("s-top"), s.top_elo);
+  } catch (e) { /* Kennzahlen sind Beiwerk */ }
+}
+
+moreEl.addEventListener("click", () => load(true));
+
+let timer;
+qEl.addEventListener("input", () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => { query = qEl.value.trim(); offset = 0; load(false); }, 250);
+});
+
+load(false);
+loadStats();
+setInterval(loadStats, 60000);
+</script>
+</body>
+</html>

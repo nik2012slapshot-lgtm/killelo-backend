@@ -13,6 +13,11 @@
      Die Pixelschrift liegt im Projekt (static/), nicht bei Google:
      kein Nachladen von fremden Servern, keine Besucher-IPs nach aussen.
      Lizenz und Herkunft stehen in static/FONT-LICENSE.txt.
+
+     Sie traegt die Seite nicht mehr, sondern setzt nur noch Akzente
+     (Rangnamen). Fuer Fliesstext ist eine Pixelschrift auf kleinen
+     Bildschirmen schwer lesbar, und der Rest der Seite folgt jetzt
+     einem ruhigeren, modernen Aufbau.
      --------------------------------------------------------------- */
   @font-face {
     font-family: "PixelMC";
@@ -21,318 +26,270 @@
   }
 
   :root {
-    --bg: #10141c;
-    --bg2: #1b212b;
-    --panel: #333c4a;
-    --panel-hi: #4d5a6d;
-    --panel-lo: #1c222c;
-    --stone: #8b8b8b;
-    --text: #e8eef5;
-    --muted: #97a3b4;
-    --grass: #6cc04a;
-    --grass-dark: #3f7a2c;
-    --gold: #ffc93c;
-    --red: #ff4d5e;
+    --bg: #06070d;
+    --card: rgba(255,255,255,.035);
+    --card-hi: rgba(255,255,255,.07);
+    --line: rgba(255,255,255,.08);
+    --line-hi: rgba(255,255,255,.16);
+    --text: #eef2f9;
+    --muted: #8b95ab;
+    --a1: #7c5cff;
+    --a2: #4da3ff;
+    --green: #3ddc84;
+    --ui: -apple-system, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+    --px: "PixelMC", "Courier New", monospace;
   }
+
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
+
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font: 15px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: var(--ui);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
 
-  /* Hintergrund: eine Wand aus Bloecken. Die Textur ist selbst erzeugt
-     (tools/make_blocks.py) - Mojangs eigene Texturen duerfen nicht auf einer
-     fremden Seite weiterverbreitet werden. Darueber liegt ein Farbschleier,
-     damit die Wand nicht vom Inhalt ablenkt. */
-  body::before {
-    content: "";
-    position: fixed; inset: 0; z-index: -2;
+  /* Hintergrund: drei weiche Lichtquellen statt eines Musters. Sie liegen
+     fest hinter allem und scrollen nicht mit, damit die Seite ruhig bleibt. */
+  .glow {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
     background:
-      linear-gradient(rgba(16,20,28,.55), rgba(16,20,28,.78)),
-      radial-gradient(ellipse at 50% -8%, rgba(60,140,80,.5) 0%, rgba(26,36,54,.5) 38%, transparent 72%),
-      url("/static/blocks/deepslate.png") 0 0 / 48px 48px;
-    image-rendering: pixelated;
+      radial-gradient(760px 520px at 18% -8%, rgba(124,92,255,.22), transparent 62%),
+      radial-gradient(680px 480px at 88% 4%,  rgba(77,163,255,.16), transparent 60%),
+      radial-gradient(900px 700px at 50% 108%, rgba(124,92,255,.10), transparent 65%);
   }
-
-  /* Feine Fugen zwischen den Bloecken - erst das macht aus der Textur eine Mauer. */
-  body::after {
-    content: "";
-    position: fixed; inset: 0; z-index: -2; pointer-events: none;
-    background:
-      linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px) 0 2px / 48px 48px,
-      linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px) 2px 0 / 48px 48px,
-      linear-gradient(rgba(0,0,0,.45) 2px, transparent 2px) 0 0 / 48px 48px,
-      linear-gradient(90deg, rgba(0,0,0,.45) 2px, transparent 2px) 0 0 / 48px 48px;
-  }
-
-  /* Langsam steigende Bloecke - dezent, nicht ablenkend. */
-  .blocks { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  /* Schwebende Lichtpunkte. Das Skript legt hier <i> hinein. */
+  .blocks { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
   .blocks i {
-    position: absolute; bottom: -60px;
-    width: 22px; height: 22px;
-    background: var(--grass-dark);
-    opacity: .2;
+    position: absolute; bottom: -40px; display: block; border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, rgba(160,140,255,.85), rgba(124,92,255,0) 70%);
     animation: rise linear infinite;
   }
   @keyframes rise {
-    0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
-    12%  { opacity: .16; }
-    88%  { opacity: .16; }
-    100% { transform: translateY(-105vh) rotate(180deg); opacity: 0; }
+    0%   { transform: translateY(0) scale(.6); opacity: 0; }
+    12%  { opacity: .55; }
+    88%  { opacity: .35; }
+    100% { transform: translateY(-118vh) scale(1); opacity: 0; }
   }
 
-  .pixel {
-    font-family: "PixelMC", "Courier New", monospace;
-    font-weight: 400;
-    letter-spacing: 0;
-    text-shadow: 3px 3px 0 rgba(0,0,0,.55);
+  .wrap { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 0 20px 64px; }
+
+  /* ---------------- Kopfbereich ---------------- */
+  header.hero { padding: 76px 0 8px; text-align: center; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 7px 15px 7px 11px; border-radius: 999px;
+    border: 1px solid var(--line-hi); background: var(--card);
+    font-size: 13px; color: var(--muted); backdrop-filter: blur(8px);
   }
+  .pill i {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 0 3px rgba(61,220,132,.18);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(61,220,132,.06); } }
 
-  .wrap { max-width: 900px; margin: 0 auto; padding: 30px 14px 70px; }
-
-  /* ---- Kopf ---- */
-  header { text-align: center; margin-bottom: 22px; }
   h1 {
-    margin: 0;
-    font-size: clamp(30px, 7.4vw, 62px);
-    line-height: 1.3;
-    text-shadow: 5px 5px 0 rgba(0,0,0,.6), 0 0 34px rgba(108,192,74,.4);
-    color: var(--grass);
-    animation: pop .5s cubic-bezier(.2,1.4,.4,1) both;
+    margin: 22px 0 0; font-size: clamp(42px, 8vw, 74px); line-height: 1.04;
+    font-weight: 800; letter-spacing: -.035em;
   }
-  h1 span { color: var(--gold); display: inline-block; animation: sway 3.5s ease-in-out infinite; }
-  @keyframes pop { from { transform: scale(.82); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  @keyframes sway { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
-  .tagline { margin: 16px 0 0; color: #b9c6d6; font-size: 15px; animation: fade .6s .15s both; }
-
-  /* ---- Minecraft-Knoepfe ---- */
-  .btn, .tab {
-    display: inline-block; cursor: pointer;
-    font-family: "PixelMC", "Courier New", monospace;
-    font-weight: 400; letter-spacing: 0;
-    color: var(--text); text-decoration: none;
-    background: linear-gradient(rgba(51,60,74,.82), rgba(51,60,74,.82)),
-                url("/static/blocks/stone.png") 0 0 / 32px 32px;
-    image-rendering: pixelated;
-    border: 0;
-    border-top: 3px solid var(--panel-hi);
-    border-left: 3px solid var(--panel-hi);
-    border-right: 3px solid var(--panel-lo);
-    border-bottom: 3px solid var(--panel-lo);
-    padding: 15px 24px;
-    font-size: 13px;
-    line-height: 1.4;
-    text-shadow: 2px 2px 0 rgba(0,0,0,.5);
-    transition: background .12s, transform .12s;
+  h1 .grad {
+    background: linear-gradient(103deg, var(--a1) 4%, var(--a2) 52%, #b79bff 96%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .btn:hover, .tab:hover { background: var(--panel-hi); transform: translateY(-2px); }
-  .btn:active, .tab:active {
-    transform: translateY(1px);
-    border-top-color: var(--panel-lo); border-left-color: var(--panel-lo);
-    border-right-color: var(--panel-hi); border-bottom-color: var(--panel-hi);
+  .tagline { margin: 20px auto 0; max-width: 620px; color: var(--muted); font-size: 17px; }
+
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; border-radius: 11px; text-decoration: none;
+    font-family: var(--ui); font-size: 14.5px; font-weight: 600; color: var(--text);
+    border: 1px solid var(--line-hi); background: var(--card);
+    cursor: pointer; transition: transform .16s, background .16s, border-color .16s;
   }
-  .btn.green { background: var(--grass-dark); border-top-color: #7ed85c; border-left-color: #7ed85c; }
-  .btn.green:hover { background: #4e9636; }
-
-  .cta { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px;
-         animation: fade .6s .25s both; }
-
-  /* ---- Reiter ---- */
-  nav { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 34px 0 0;
-        animation: fade .6s .3s both; }
-  .tab { font-size: 12px; padding: 14px 18px; opacity: .8; line-height: 1.4; }
-  .tab[aria-selected="true"] {
-    opacity: 1; background: var(--grass-dark);
-    border-top-color: #7ed85c; border-left-color: #7ed85c;
-    color: #fff;
+  .btn:hover { transform: translateY(-2px); background: var(--card-hi); border-color: rgba(255,255,255,.28); }
+  .btn.primary {
+    border-color: transparent; color: #0a0714; font-weight: 700;
+    background: linear-gradient(103deg, #9b7dff, #5aa9ff);
+    box-shadow: 0 10px 34px -12px rgba(124,92,255,.85);
   }
+  .btn.primary:hover { box-shadow: 0 14px 40px -12px rgba(124,92,255,.95); }
+  .btn:disabled { opacity: .5; cursor: default; transform: none; }
 
-  .panel {
-    background:
-      linear-gradient(rgba(27,33,43,.82), rgba(27,33,43,.88)),
-      url("/static/blocks/stone.png") 0 0 / 64px 64px;
-    image-rendering: pixelated;
-    border-top: 3px solid var(--panel-hi);
-    border-left: 3px solid var(--panel-hi);
-    border-right: 3px solid var(--panel-lo);
-    border-bottom: 3px solid var(--panel-lo);
-    margin-top: 14px;
-    padding: 18px;
-  }
-  .view[hidden] { display: none; }
-  .view { animation: slidein .32s ease both; }
-  @keyframes slidein { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
-
-  h2.pixel { font-size: 12px; line-height: 1.6; margin: 0 0 14px; color: var(--gold); }
-  h2.pixel::before { content: "▎"; color: var(--grass); }
-
-  /* ---- Kennzahlen ---- */
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  /* ---------------- Kennzahlen ---------------- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 46px 0 12px; }
   .stat {
-    background: var(--panel-lo); padding: 12px 8px; text-align: center;
-    border-top: 2px solid var(--panel); border-left: 2px solid var(--panel);
-    transition: transform .15s;
+    padding: 22px 18px; border-radius: 16px; text-align: center;
+    border: 1px solid var(--line); background: var(--card); backdrop-filter: blur(10px);
   }
-  .stat:hover { transform: translateY(-3px); }
-  .stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; color: var(--gold);
-            font-family: "PixelMC", "Courier New", monospace; text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
-  .stat span { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .stat b {
+    display: block; font-size: clamp(26px, 4.4vw, 38px); font-weight: 800;
+    letter-spacing: -.03em; line-height: 1.15; font-variant-numeric: tabular-nums;
+    background: linear-gradient(103deg, #fff 10%, #b9c6ff 92%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .stat span {
+    display: block; margin-top: 4px; font-size: 12.5px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .1em;
+  }
 
-  /* ---- Suche ---- */
+  /* ---------------- Reiter ---------------- */
+  nav {
+    display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;
+    margin: 34px auto 26px; padding: 5px; width: fit-content;
+    border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+    backdrop-filter: blur(10px);
+  }
+  .tab {
+    padding: 9px 18px; border: 0; border-radius: 10px; background: transparent;
+    color: var(--muted); font-family: var(--ui); font-size: 13.5px; font-weight: 600;
+    cursor: pointer; transition: color .16s, background .16s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] {
+    color: #0a0714; background: linear-gradient(103deg, #9b7dff, #5aa9ff);
+    box-shadow: 0 6px 20px -10px rgba(124,92,255,.9);
+  }
+
+  .panel { animation: fade .34s ease both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(9px); } }
+
+  h2 { margin: 0 0 20px; font-size: clamp(22px, 3.4vw, 30px); font-weight: 800; letter-spacing: -.025em; }
+
+  /* ---------------- Suchfeld ---------------- */
   #q {
-    width: 100%; padding: 11px 13px; margin-bottom: 12px;
-    background: var(--panel-lo); color: var(--text);
-    border: 0; border-top: 3px solid var(--panel-lo); border-left: 3px solid var(--panel-lo);
-    border-right: 3px solid var(--panel); border-bottom: 3px solid var(--panel);
-    font: 11px "PixelMC", "Courier New", monospace; outline: none;
+    width: 100%; margin: 0 0 16px; padding: 13px 16px;
+    border: 1px solid var(--line); border-radius: 12px;
+    background: var(--card); color: var(--text);
+    font-family: var(--ui); font-size: 14.5px; outline: none;
+    transition: border-color .16s, background .16s;
   }
-  #q:focus { border-top-color: var(--grass-dark); border-left-color: var(--grass-dark); }
-  #q::placeholder { color: #66717f; }
+  #q::placeholder { color: #5d6779; }
+  #q:focus { border-color: rgba(124,92,255,.6); background: rgba(124,92,255,.06); }
 
-  /* ---- Rangliste ---- */
+  /* ---------------- Rangliste ---------------- */
   .row {
-    display: grid; grid-template-columns: 44px 1fr 104px 72px 58px;
-    align-items: center; gap: 10px; padding: 12px 10px;
-    border-bottom: 1px solid rgba(255,255,255,.07);
-    animation: rowin .3s ease both;
+    display: grid; grid-template-columns: 46px 1fr 116px 74px 78px;
+    align-items: center; gap: 10px;
+    padding: 11px 14px; margin-bottom: 7px; border-radius: 13px;
+    border: 1px solid var(--line); background: var(--card);
+    animation: fade .3s ease both;
+    transition: transform .16s, border-color .16s, background .16s;
   }
-  @keyframes rowin { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
-  .row.head { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
-              background: var(--panel-lo); animation: none; }
-  .row:not(.head):hover { background: rgba(108,192,74,.12); }
-  /* Die ersten drei tragen die Seite - vorher sah Platz 1 aus wie Platz 22. */
-  .row.top3 { padding: 16px 10px; background: linear-gradient(90deg, rgba(255,255,255,.06), transparent 60%); }
-  .row.top3 .name { font-size: 17px; font-weight: 700; }
-  .row.top3 .elo { font-size: 15px; }
-  .row.top3 .who img { width: 38px; height: 38px; }
-  .row.r1 { border-left: 5px solid #ffd700; }
-  .row.r2 { border-left: 5px solid #cfd6dd; }
-  .row.r3 { border-left: 5px solid #cd7f32; }
-  .pos.m1, .pos.m2, .pos.m3 { font-size: 15px; }
-  .pos { text-align: center; font-size: 11px; font-family: "PixelMC", "Courier New", monospace; color: var(--muted); }
-  .pos.m1 { color: #ffd700; } .pos.m2 { color: #cfd6dd; } .pos.m3 { color: #cd7f32; }
-  .who { display: flex; align-items: center; gap: 9px; min-width: 0; }
-  .who img { width: 28px; height: 28px; image-rendering: pixelated; flex: none; background: var(--panel-lo); }
-  .who .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .rank { font-size: 9px; font-family: "PixelMC", "Courier New", monospace; line-height: 1.4;
-          text-align: center; }
+  .row:not(.head):hover { transform: translateX(3px); border-color: var(--line-hi); background: var(--card-hi); }
+  .row.head {
+    background: none; border: 0; padding: 0 14px 6px; margin-bottom: 4px;
+    color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .11em;
+    animation: none;
+  }
+  .row.head:hover { transform: none; }
+
+  .pos { font-weight: 800; font-size: 15px; color: var(--muted); text-align: center; }
+  .pos.m1, .pos.m2, .pos.m3 {
+    width: 30px; height: 30px; margin: 0 auto; border-radius: 50%;
+    display: grid; place-items: center; color: #10131c; font-size: 13.5px;
+  }
+  .pos.m1 { background: linear-gradient(140deg, #ffe08a, #f5b31c); box-shadow: 0 4px 16px -6px rgba(245,179,28,.9); }
+  .pos.m2 { background: linear-gradient(140deg, #eef2f8, #b3bccb); }
+  .pos.m3 { background: linear-gradient(140deg, #e8a878, #c1703c); }
+
+  .top3 { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.055); }
+  .top3.r1 { box-shadow: inset 3px 0 0 #f5b31c; }
+  .top3.r2 { box-shadow: inset 3px 0 0 #b3bccb; }
+  .top3.r3 { box-shadow: inset 3px 0 0 #c1703c; }
+
+  .who { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .who img {
+    width: 30px; height: 30px; border-radius: 8px; image-rendering: pixelated;
+    border: 1px solid var(--line-hi); flex: none;
+  }
+  .name { font-weight: 600; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
   .rank span {
-    display: inline-block; padding: 5px 8px;
-    /* Hintergrundfarbe setzt das Skript je Rang. currentColor waere hier eine
-       Falle: es loest sich am eigenen Element auf, dessen Textfarbe wir gerade
-       ueberschreiben - die Plakette faerbte sich damit selbst schwarz. */
-    color: #10141c;
-    box-shadow: 2px 2px 0 rgba(0,0,0,.45);
+    display: inline-block; padding: 4px 9px; border-radius: 7px;
+    font-family: var(--px); font-size: 8px; letter-spacing: .04em; color: #08090f;
   }
-  .elo { text-align: right; font-size: 11px; font-family: "PixelMC", "Courier New", monospace;
+  .elo { font-weight: 800; font-size: 16px; letter-spacing: -.02em; text-align: right;
          font-variant-numeric: tabular-nums; }
-  .kd { text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .provisional { opacity: .5; }
-  .provisional .elo::after { content: " ~"; }
+  .kd { color: var(--muted); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
 
-  .msg { padding: 34px 16px; text-align: center; color: var(--muted); }
-  #more { display: block; width: 100%; margin-top: 12px; }
-  #more[hidden] { display: none; }
+  .provisional { opacity: .62; }
+  .msg { padding: 26px 0; text-align: center; color: var(--muted); font-size: 14px; }
+  #more { display: block; margin: 14px auto 0; }
 
-  /* ---- Raenge ---- */
-  .badges {
-    display: grid; gap: 14px;
-    grid-template-columns: repeat(4, 1fr);
-  }
+  /* ---------------- Rangwand ---------------- */
+  .badges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
   .badge-card {
-    background: var(--panel-lo); padding: 12px 8px 10px; text-align: center;
-    border-top: 2px solid var(--panel); border-left: 2px solid var(--panel);
-    transition: transform .18s;
-    animation: rowin .35s ease both;
+    padding: 18px 10px 13px; border-radius: 16px; text-align: center;
+    border: 1px solid var(--line); background: var(--card);
+    animation: fade .34s ease both; transition: transform .18s, border-color .18s;
   }
-  .badge-card:hover { transform: translateY(-5px); }
-  .badge-card img {
-    display: block; margin: 0 auto 8px;
-    width: 100%; max-width: 118px; height: 130px;
-    /* Feste Hoehe, Bild eingepasst: die Wappen sind unterschiedlich hoch,
-       sonst stehen die Elo-Bereiche darunter auf verschiedenen Linien. */
-    object-fit: contain;
-    image-rendering: pixelated;
-  }
-  .badge-card .th {
-    font-family: "PixelMC", "Courier New", monospace; font-size: 9px;
-    color: var(--muted); line-height: 1.5;
-  }
+  .badge-card:hover { transform: translateY(-4px); border-color: var(--line-hi); }
+  .badge-card img { width: 100%; max-width: 74px; height: 84px; object-fit: contain; }
+  .badge-card .th { margin-top: 8px; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 
-  .ranks { display: grid; gap: 8px; }
-  .rankrow {
-    display: grid; grid-template-columns: 16px 1fr auto; gap: 12px; align-items: center;
-    background: var(--panel-lo); padding: 11px 13px;
-    border-left: 4px solid currentColor;
-    transition: transform .15s, background .15s;
-    animation: rowin .3s ease both;
-  }
-  .rankrow:hover { transform: translateX(6px); background: var(--panel); }
-  .rankrow .dot { width: 13px; height: 13px; background: currentColor; }
-  .rankrow .nm { font-family: "PixelMC", "Courier New", monospace; font-size: 11px; letter-spacing: 0;
-                 text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
-  .rankrow .th { color: var(--muted); font-size: 10px; font-family: "PixelMC", "Courier New", monospace; }
-
-  /* ---- Mods ---- */
-  .mods { display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: 700px) { .mods { grid-template-columns: 1fr; } }
+  /* ---------------- Karten ---------------- */
+  .mods { display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 14px; }
   .mod {
-    background: var(--panel-lo); padding: 14px;
-    border-top: 2px solid var(--panel); border-left: 2px solid var(--panel);
-    transition: transform .15s;
-    animation: rowin .3s ease both;
+    display: flex; flex-direction: column; padding: 20px; border-radius: 16px;
+    border: 1px solid var(--line); background: var(--card);
+    transition: transform .18s, border-color .18s, background .18s;
   }
-  .mod:hover { transform: translateY(-3px); }
-  .mod h3 { margin: 0 0 9px; font-size: 11px; line-height: 1.6; font-family: "PixelMC", "Courier New", monospace;
-            text-shadow: 2px 2px 0 rgba(0,0,0,.5); }
-  .mod p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+  .mod:hover { transform: translateY(-4px); border-color: var(--line-hi); background: var(--card-hi); }
+  .mod h3 { margin: 0 0 10px; font-size: 16.5px; font-weight: 700; letter-spacing: -.015em; }
+  .mod p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+  .mod .btn { align-self: flex-start; margin-top: auto; }
+
   .badge {
-    display: inline-block; font-size: 7px; padding: 5px 7px; margin-left: 6px;
-    font-family: "PixelMC", "Courier New", monospace; letter-spacing: 0; vertical-align: middle;
+    display: inline-block; margin-left: 8px; padding: 3px 8px; border-radius: 6px;
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    vertical-align: middle;
   }
-  .badge.live { background: var(--grass-dark); color: #dfffd0; }
-  .badge.soon { background: #4a4033; color: var(--gold); }
+  .badge.live { background: rgba(61,220,132,.14); color: var(--green); border: 1px solid rgba(61,220,132,.3); }
+  .badge.soon { background: rgba(255,255,255,.06); color: var(--muted); border: 1px solid var(--line-hi); }
 
-  footer { margin-top: 26px; text-align: center; color: var(--muted); font-size: 12px; }
-  footer a { color: var(--grass); }
+  .note { color: var(--muted); font-size: 14px; }
+  .note b { color: var(--text); }
 
-  /* ---- Handy ----
-     Die Pixelschrift traegt breit: mit den Desktop-Groessen laufen Knoepfe,
-     Reiterleiste und Tabelle ueber den Rand. overflow-x:hidden versteckt nur
-     die Scrollleiste - abgeschnitten waere der Inhalt trotzdem. */
+  footer {
+    margin-top: 54px; padding-top: 24px; border-top: 1px solid var(--line);
+    text-align: center; color: var(--muted); font-size: 13px;
+  }
+  footer a { color: #a893ff; text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  code { padding: 2px 6px; border-radius: 5px; background: rgba(255,255,255,.07); font-size: 12.5px; color: var(--text); }
+
+  /* ---------------- Kleine Bildschirme ---------------- */
+  @media (max-width: 760px) {
+    .badges { grid-template-columns: repeat(3, 1fr); }
+  }
   @media (max-width: 620px) {
-    .wrap { padding: 20px 10px 50px; }
+    header.hero { padding-top: 52px; }
+    .wrap { padding: 0 15px 48px; }
+    .stats { gap: 9px; margin-top: 34px; }
+    .stat { padding: 16px 9px; border-radius: 13px; }
+    .stat span { font-size: 10.5px; letter-spacing: .06em; }
+    nav { width: 100%; justify-content: stretch; }
+    .tab { flex: 1; padding: 9px 6px; font-size: 12px; }
+    /* Rang und K/D fallen weg: auf dem Handy zaehlen Platz, Name und Elo. */
+    .row { grid-template-columns: 34px 1fr 64px; gap: 8px; padding: 10px; }
+    .row .rank, .row .kd { display: none; }
+    .who img { width: 26px; height: 26px; }
+    .name { font-size: 13.5px; }
     .badges { grid-template-columns: repeat(2, 1fr); }
-    .btn, .tab { padding: 11px 12px; font-size: 10px; }
-    .cta { gap: 7px; }
-    nav { gap: 5px; margin-top: 24px; }
-    .panel { padding: 12px 10px; }
-    .tagline { font-size: 13px; }
-    .stats { gap: 6px; }
-    .stat b { font-size: 16px; }
-    .stat span { font-size: 8px; letter-spacing: .04em; }
-    .row { grid-template-columns: 30px 1fr 78px 60px; gap: 6px; padding: 10px 4px; }
-    .kd, .row.head .kd { display: none; }
-    .row .rank { font-size: 7px; }
-    .rank span { padding: 4px 5px; }
-    .who img { width: 24px; height: 24px; }
-    .row.top3 .who img { width: 30px; height: 30px; }
-    .row.top3 .name { font-size: 14px; }
-    .elo { font-size: 10px; }
-    #q { font-size: 10px; }
-    h2.pixel { font-size: 10px; }
   }
   @media (max-width: 400px) {
-    .btn, .tab { padding: 10px 9px; font-size: 9px; }
-    .row { grid-template-columns: 26px 1fr 66px 52px; }
+    h1 { font-size: 34px; }
+    .tagline { font-size: 15px; }
+    .btn { padding: 11px 16px; font-size: 13.5px; }
   }
 
-  /* Wer Bewegung abgestellt hat, bekommt keine. */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
     .blocks { display: none; }
@@ -340,35 +297,40 @@
 </style>
 </head>
 <body>
+<div class="glow" aria-hidden="true"></div>
 <div class="blocks" id="blocks" aria-hidden="true"></div>
 
 <div class="wrap">
 
-  <header>
-    <h1 class="pixel">ELO <span>SYSTEM</span></h1>
-    <p class="tagline">Competitive PvP ranking for any Minecraft server — built from the kill messages in chat.</p>
+  <header class="hero">
+    <div class="pill"><i></i> Live leaderboard · updated every minute</div>
+    <h1>Climb the <span class="grad">ranks</span></h1>
+    <p class="tagline">
+      Competitive Elo rating for PvP on any Minecraft server, built from the kill
+      messages in chat. Eight ranks, killstreaks, and a global leaderboard.
+    </p>
     <div class="cta">
-      <a class="btn green" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">▼ Modrinth</a>
-      <a class="btn" href="https://www.curseforge.com/minecraft/mc-mods/elo-system" target="_blank" rel="noopener">▼ CurseForge</a>
+      <a class="btn primary" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">Get the mod</a>
+      <a class="btn" href="https://www.curseforge.com/minecraft/mc-mods/elo-system" target="_blank" rel="noopener">CurseForge</a>
     </div>
-  </header>
 
-  <nav role="tablist" aria-label="Sections">
-    <button class="tab pixel" role="tab" aria-selected="true"  data-view="board">TOP ELO</button>
-    <button class="tab pixel" role="tab" aria-selected="false" data-view="ranks">RANKS</button>
-    <button class="tab pixel" role="tab" aria-selected="false" data-view="mods">OTHER MODS</button>
-    <button class="tab pixel" role="tab" aria-selected="false" data-view="donate">DONATE</button>
-  </nav>
-
-  <!-- ---------- TOP ELO ---------- -->
-  <section class="panel view" id="view-board" role="tabpanel">
     <div class="stats">
       <div class="stat"><b id="s-players">0</b><span>Players</span></div>
       <div class="stat"><b id="s-kills">0</b><span>Kills</span></div>
       <div class="stat"><b id="s-top">0</b><span>Top Elo</span></div>
     </div>
+  </header>
 
-    <input id="q" type="search" placeholder="&gt; search player..." autocomplete="off" spellcheck="false">
+  <nav role="tablist" aria-label="Sections">
+    <button class="tab" role="tab" aria-selected="true"  data-view="board">Leaderboard</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="ranks">Ranks</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="mods">Other mods</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="donate">Support</button>
+  </nav>
+
+  <!-- ---------- LEADERBOARD ---------- -->
+  <section class="panel view" id="view-board" role="tabpanel">
+    <input id="q" type="search" placeholder="Search for a player…" autocomplete="off" spellcheck="false">
 
     <div class="row head">
       <div class="pos">#</div><div>Player</div>
@@ -376,98 +338,97 @@
     </div>
     <div id="rows"></div>
     <div id="msg" class="msg">Loading…</div>
-    <button id="more" class="btn pixel" hidden>LOAD MORE</button>
+    <button id="more" class="btn" hidden>Load more</button>
   </section>
 
   <!-- ---------- RANKS ---------- -->
   <section class="panel view" id="view-ranks" role="tabpanel" hidden>
-    <h2 class="pixel">THE EIGHT RANKS</h2>
+    <h2>The eight ranks</h2>
     <div class="badges" id="badgelist"></div>
-    <p style="color:var(--muted);font-size:13px;margin:16px 0 0">
-      Everyone starts at <b style="color:var(--text)">1000</b>. Beating a stronger opponent is worth
-      more than beating a weaker one, and killing the same player over and over is worth less each
-      time. Ratings stay provisional (<span style="opacity:.6">~</span>) until three recorded fights.
+    <p class="note" style="margin:20px 0 0">
+      Everyone starts at <b>1000</b>. Beating a stronger opponent is worth more than beating a
+      weaker one, and killing the same player over and over is worth less each time, so farming
+      does not pay.
     </p>
   </section>
 
   <!-- ---------- OTHER MODS ---------- -->
   <section class="panel view" id="view-mods" role="tabpanel" hidden>
-    <h2 class="pixel">MORE FROM THEREALNOOB</h2>
+    <h2>More from TheRealNoob</h2>
     <div class="mods">
       <div class="mod">
-        <h3>ELO System <span class="badge live">RELEASED</span></h3>
-        <p>Kill-based Elo for any PvP server. Ranks, killstreaks, anti-farming, tab-list tags —
+        <h3>ELO System <span class="badge live">Released</span></h3>
+        <p>Kill-based Elo for any PvP server. Ranks, killstreaks, anti-farming and tab-list tags,
            entirely client-side.</p>
-        <a class="btn green pixel" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">DOWNLOAD</a>
+        <a class="btn primary" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">Download</a>
       </div>
       <div class="mod">
-        <h3>Linked <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <h3>Map Marker <span class="badge live">Released</span></h3>
+        <p>Mark out a region with two key presses, give it a name and a colour, and see it through
+           walls from far away.</p>
+        <a class="btn" href="https://www.curseforge.com/minecraft/mc-mods/map-marker" target="_blank" rel="noopener">Download</a>
+      </div>
+      <div class="mod">
+        <h3>Traces <span class="badge soon">Coming soon</span></h3>
+        <p>The world remembers. Mining and deaths leave faint glowing marks where they happened,
+           fading away over a week. Atmosphere only, nothing else changes.</p>
+      </div>
+      <div class="mod">
+        <h3>Linked <span class="badge soon">In development</span></h3>
         <p>One health bar for everyone: damage hits all of you, and when it runs out you all die
-           together. Plus a shared bag — one player puts something in, anyone can take it out.
-           Built for co-op runs.</p>
+           together. Plus a shared bag that anyone can take from.</p>
       </div>
       <div class="mod">
-        <h3>Orphaned <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <h3>Orphaned <span class="badge soon">In development</span></h3>
         <p>Removed a mod from your world? Minecraft silently deletes every block it owned. Orphaned
            finds those leftovers and cleans them up.</p>
       </div>
       <div class="mod">
-        <h3>Map Marker <span class="badge soon">IN DEVELOPMENT</span></h3>
-        <p>Mark out a region with two key presses, give it a name and a colour, and group regions by
-           that colour.</p>
-      </div>
-      <div class="mod">
-        <h3>ChunkView <span class="badge soon">IN DEVELOPMENT</span></h3>
+        <h3>ChunkView <span class="badge soon">In development</span></h3>
         <p>Render distance far beyond the vanilla limit, set with a command: <code>/rd &lt;chunks&gt;</code>.</p>
-      </div>
-      <div class="mod">
-        <h3>AI Builder <span class="badge soon">IN DEVELOPMENT</span></h3>
-        <p>Describe a building in plain text and watch it get placed block by block.</p>
       </div>
     </div>
   </section>
 
-  <!-- ---------- DONATE ---------- -->
+  <!-- ---------- SUPPORT ---------- -->
   <section class="panel view" id="view-donate" role="tabpanel" hidden>
-    <h2 class="pixel">SUPPORT THE PROJECT</h2>
-    <p style="color:var(--muted);font-size:14px">
+    <h2>Support the project</h2>
+    <p class="note">
       Every mod here is free, has no ads and collects nothing you did not agree to. Running the
-      leaderboard costs nothing today — it sits on free hosting — and the plan is to keep it that way.
+      leaderboard costs nothing today, it sits on free hosting, and the plan is to keep it that way.
     </p>
-    <p style="color:var(--muted);font-size:14px">
-      If you want to help anyway, the things that actually move the needle are free:
-    </p>
-    <div class="mods" style="margin-top:14px">
+    <p class="note">If you want to help anyway, the things that actually move the needle are free:</p>
+    <div class="mods" style="margin-top:18px">
       <div class="mod">
-        <h3>★ Leave a rating</h3>
-        <p>A follow or a comment on Modrinth does more for a small mod than anything else — it decides
+        <h3>Leave a rating</h3>
+        <p>A follow or a comment on Modrinth does more for a small mod than anything else. It decides
            whether anyone ever finds it.</p>
-        <a class="btn green pixel" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">OPEN MODRINTH</a>
+        <a class="btn primary" href="https://modrinth.com/mod/elo-system" target="_blank" rel="noopener">Open Modrinth</a>
       </div>
       <div class="mod">
-        <h3>⚑ Tell your server</h3>
-        <p>Ask whether client-side mods are allowed, then mention it in chat. That is how most players
-           here found it.</p>
+        <h3>Tell your server</h3>
+        <p>Ask whether client-side mods are allowed, then mention it in chat. That is how most
+           players here found it.</p>
       </div>
       <div class="mod">
-        <h3>⚒ Report bugs and ideas</h3>
-        <p>Half the features in 1.3.0 came from players who simply said what was missing.</p>
+        <h3>Report bugs and ideas</h3>
+        <p>Half the features in the mod came from players who simply said what was missing.</p>
       </div>
     </div>
   </section>
 
   <footer>
     <p>Made by <a href="https://modrinth.com/user/TheRealNoob" target="_blank" rel="noopener">TheRealNoob</a>
-       · Ratings are local by default; the leaderboard only shows players who opted in with
-       <code>/elo online on</code>.</p>
+       · Your fights count towards this leaderboard once you have the mod.
+       <code>/elo online off</code> opts out.</p>
   </footer>
 </div>
 
 <script>
-// Gleiche Schwellen und Farben wie Rank.java in der Mod.
+// Gleiche Schwellen und Farben wie Rank.java in der Mod (ab 1.4.1).
 const RANKS = [
-  { min: 2000, name: "LEGEND",   color: "#FF4D5E" },
-  { min: 1750, name: "CHAMPION", color: "#9B4DFF" },
+  { min: 2000, name: "LEGEND",   color: "#9B4DFF" },
+  { min: 1750, name: "CHAMPION", color: "#FF4D5E" },
   { min: 1550, name: "MASTER",   color: "#C77DFF" },
   { min: 1400, name: "DIAMOND",  color: "#4FA6FF" },
   { min: 1250, name: "PLATINUM", color: "#5AE6E0" },
@@ -520,14 +481,14 @@ RANKS.slice().reverse().forEach((r, i, arr) => {
   bl.appendChild(card);
 });
 
-// ---- Schwebende Bloecke ----
+// ---- Schwebende Lichtpunkte ----
 const bc = document.getElementById("blocks");
 for (let i = 0; i < 14; i++) {
   const b = document.createElement("i");
   b.style.left = Math.random() * 100 + "%";
   b.style.animationDuration = (16 + Math.random() * 18) + "s";
   b.style.animationDelay = (-Math.random() * 25) + "s";
-  const s = 12 + Math.random() * 18;
+  const s = 4 + Math.random() * 9;
   b.style.width = b.style.height = s + "px";
   bc.appendChild(b);
 }
@@ -592,7 +553,7 @@ async function load(append) {
         : "No ranked players yet — be the first.";
     }
     moreEl.hidden = offset >= total;
-    moreEl.textContent = "LOAD MORE (" + (total - offset) + ")";
+    moreEl.textContent = "Load more (" + (total - offset) + ")";
   } catch (e) {
     if (mine !== reqId) return;
     msgEl.hidden = false;

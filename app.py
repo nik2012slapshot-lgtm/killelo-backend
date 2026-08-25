@@ -362,12 +362,10 @@ def leaderboard():
     # erst danach gesucht und geblaettert.
     ranked = """
         SELECT uuid, name, elo, kills, deaths, streak,
-               ROW_NUMBER() OVER (
-                   ORDER BY (kills + deaths >= ?) DESC, elo DESC, name ASC
-               ) AS pos
+               ROW_NUMBER() OVER (ORDER BY elo DESC, name ASC) AS pos
         FROM players WHERE is_mod_user = 1
     """
-    args = [MIN_MATCHES_RANKED]
+    args = []
     where = ""
     if query:
         # SQLite vergleicht mit LIKE bei ASCII ohnehin ohne Ruecksicht auf
