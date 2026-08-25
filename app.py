@@ -289,7 +289,14 @@ def register():
     get_player(d, uuid, name)
     ex(d, "UPDATE players SET is_mod_user = 1 WHERE uuid = ?", (uuid,))
     d.commit()
-    return jsonify(ok=True)
+    # Der gespeicherte Stand geht mit zurueck. Die Mod rechnet lokal mit
+    # allen Kaempfen, die sie im Chat sieht, meldet aber nur die eigenen -
+    # dadurch bewertet sie fremde Spieler anders als die Rangliste und kommt
+    # auf einen anderen Wert. Fuer den eigenen Spieler ist die Rangliste
+    # massgeblich, sonst zeigen HUD und Website verschiedene Zahlen.
+    row = get_player(d, uuid, name)
+    return jsonify(ok=True, elo=row["elo"], kills=row["kills"],
+                   deaths=row["deaths"], streak=row["streak"])
 
 
 @app.post("/report")
@@ -309,7 +316,16 @@ def report():
     ex(d, "DELETE FROM dedup WHERE ts < ?", (now - DEDUP_WINDOW_S,))
     if ex(d, "SELECT 1 FROM dedup WHERE key = ?", (key,)).fetchone():
         d.commit()
-        return jsonify(ok=True, deduped=True)
+        k_row = ex(d, "SELECT elo, kills, deaths FROM players WHERE uuid = ?", (ku,)).fetchone()
+        v_row = ex(d, "SELECT elo, kills, deaths FROM players WHERE uuid = ?", (vu,)).fetchone()
+        antwort = {"ok": True, "deduped": True}
+        if k_row:
+            antwort.update(killer_uuid=ku, killer_elo=k_row["elo"],
+                           killer_kills=k_row["kills"], killer_deaths=k_row["deaths"])
+        if v_row:
+            antwort.update(victim_uuid=vu, victim_elo=v_row["elo"],
+                           victim_kills=v_row["kills"], victim_deaths=v_row["deaths"])
+        return jsonify(antwort)
     upsert(d, "dedup", ["key", "ts"], ["key"], (key, now))
 
     killer = get_player(d, ku, kn)
@@ -335,7 +351,15 @@ def report():
         (loss, vu),
     )
     d.commit()
-    return jsonify(ok=True, gain=gain, loss=loss)
+    # Nach dem Kampf beide Staende zurueckmelden, damit die Mod ihren
+    # eigenen Wert nachziehen kann (siehe Erklaerung in /register).
+    k_neu = ex(d, "SELECT elo, kills, deaths, streak FROM players WHERE uuid = ?", (ku,)).fetchone()
+    v_neu = ex(d, "SELECT elo, kills, deaths, streak FROM players WHERE uuid = ?", (vu,)).fetchone()
+    return jsonify(ok=True, gain=gain, loss=loss,
+                   killer_uuid=ku, killer_elo=k_neu["elo"],
+                   killer_kills=k_neu["kills"], killer_deaths=k_neu["deaths"],
+                   victim_uuid=vu, victim_elo=v_neu["elo"],
+                   victim_kills=v_neu["kills"], victim_deaths=v_neu["deaths"])
 
 
 def player_json(row):
