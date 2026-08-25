@@ -199,10 +199,9 @@
   .pos.m2 { background: linear-gradient(140deg, #eef2f8, #b3bccb); }
   .pos.m3 { background: linear-gradient(140deg, #e8a878, #c1703c); }
 
-  .top3 { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.055); }
-  .top3.r1 { box-shadow: inset 3px 0 0 #f5b31c; }
-  .top3.r2 { box-shadow: inset 3px 0 0 #b3bccb; }
-  .top3.r3 { box-shadow: inset 3px 0 0 #c1703c; }
+  /* Keine Sonderbehandlung fuer die ersten drei: der farbige Kreis vor dem
+     Namen reicht als Auszeichnung, ein zweiter Hintergrund macht die Liste
+     nur unruhig. */
 
   .who { display: flex; align-items: center; gap: 11px; min-width: 0; }
   .who img {
@@ -219,7 +218,8 @@
          font-variant-numeric: tabular-nums; }
   .kd { color: var(--muted); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
 
-  .provisional { opacity: .62; }
+  /* Wer noch wenige Kaempfe hat, wird nicht mehr abgeblendet. Das sah nach
+     einem Fehler aus, nicht nach einem Hinweis. */
   .msg { padding: 26px 0; text-align: center; color: var(--muted); font-size: 14px; }
   #more { display: block; margin: 14px auto 0; }
 
@@ -516,13 +516,13 @@ function render(players, append) {
   players.forEach((p, i) => {
     const r = rankOf(p.elo);
     const el = document.createElement("div");
-    // Die ersten drei bekommen mehr Gewicht - sonst ist die Liste ein
-    // gleichfoermiger Block und der Erste faellt niemandem auf.
-    const podium = !p.provisional && p.pos <= 3;
-    el.className = "row" + (p.provisional ? " provisional" : "")
-                 + (podium ? " top3 r" + p.pos : "");
+    // Alle Zeilen sind gleich aufgebaut. Einzige Auszeichnung sind die
+    // farbigen Kreise auf den ersten drei Plaetzen, und die haengen nur am
+    // Platz - vorher fielen sie weg, sobald jemand noch wenige Kaempfe
+    // hatte, dann sah Platz 1 aus wie Platz 40.
+    el.className = "row";
     el.style.animationDelay = Math.min(i * 28, 500) + "ms";
-    const medal = podium ? " m" + p.pos : "";
+    const medal = p.pos <= 3 ? " m" + p.pos : "";
     el.innerHTML =
       '<div class="pos' + medal + '">' + p.pos + '</div>' +
       '<div class="who"><img loading="lazy" alt="" src="' + avatar(p) + '">' +
